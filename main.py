@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 import uvicorn
-from models.product import Product
+from models.houses import Houses
 # from routers.login import router as routerLogin
+from routers.house import router as routerHouses
 from routers.contact import router as routerContact
 from routers.wizardForm import router as routerWizardForm
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +34,6 @@ if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 # app.include_router(routerLogin)
-
+app.include_router(routerHouses)
 app.include_router(routerContact)
 app.include_router(routerWizardForm)
