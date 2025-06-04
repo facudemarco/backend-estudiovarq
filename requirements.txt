@@ -1,7 +1,8 @@
 fastapi[standard]
 uvicorn
 pydantic
-mysql-connector-python
+sqlalchemy
+pymysql
 mysql
 python-dotenv
 python-multipart
