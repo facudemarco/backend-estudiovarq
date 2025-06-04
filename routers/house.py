@@ -8,7 +8,7 @@ import shutil
 
 router = APIRouter()
 
-IMAGES_DIR = "/home/facu/iweb/estudio-varq/backend-estudiovarq/images"
+IMAGES_DIR = "/app/images"
 DOMAIN_URL = "https://api-estudiovarq.iwebtecnology.com/images"
 
 # Get all houses
@@ -19,7 +19,7 @@ def getHouses():
             result = connection.execute(text("SELECT * FROM Houses"))
             row = result.mappings().all()
             if row is None:
-                raise HTTPException(status_code=404, detail="Product not found.")
+                raise HTTPException(status_code=404, detail="House not found.")
             return row
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -68,6 +68,13 @@ async def createHouse(
             )
 
             for img in images:
+                print("IMAGES_DIR:", IMAGES_DIR)
+                print("Exists?", os.path.exists(IMAGES_DIR))
+                print("Absolute path:", os.path.abspath(IMAGES_DIR))
+
+                if not os.path.exists(IMAGES_DIR):
+                    os.makedirs(IMAGES_DIR, exist_ok=True)
+                    
                 ext = os.path.splitext(str(img.filename or "file.jpg"))[1]
                 filename = f"{uuid.uuid4()}{ext}"
                 filepath = os.path.join(IMAGES_DIR, filename)
