@@ -17,10 +17,21 @@ def getHouses():
     try:
         with engine.begin() as connection:
             result = connection.execute(text("SELECT * FROM Houses"))
-            row = result.mappings().all()
-            if row is None:
-                raise HTTPException(status_code=404, detail="House not found.")
-            return row
+            rows = result.mappings().all()
+            if not rows:
+                raise HTTPException(status_code=404, detail="No houses found.")
+            houses_list = []
+            for house in rows:
+                house_id = house["id"]
+                images_result = connection.execute(
+                    text("SELECT url FROM houses_imgs WHERE house_id = :id"),
+                    {"id": house_id}
+                )
+                images = [img[0] for img in images_result]
+                house_dict = dict(house)
+                house_dict["images"] = images
+                houses_list.append(house_dict)
+            return houses_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -36,7 +47,6 @@ def getHousesById(id: str):
             row = result.mappings().first()
             if row is None:
                 raise HTTPException(status_code=404, detail="House not found.")
-
             images_result = connection.execute(
                 text("SELECT url FROM houses_imgs WHERE house_id = :id"),
                 {"id": id}
