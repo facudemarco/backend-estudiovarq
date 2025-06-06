@@ -11,10 +11,9 @@ app = FastAPI()
 
 origins = [
     "http://localhost:3000",
-    "https://estudiovarq.com.ar",
     "https://www.estudiovarq.com.ar",
-    "https://estudio-varq.vercel.app",
-    "https://www.estudio-varq.vercel.app",
+    "https://estudiovarq-website.vercel.app"
+    "https://estudiovarq.com.ar/"
 ]
 
 app.add_middleware(
