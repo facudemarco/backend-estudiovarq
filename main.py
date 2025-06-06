@@ -13,7 +13,8 @@ origins = [
     "http://localhost:3000",
     "https://www.estudiovarq.com.ar",
     "https://estudiovarq-website.vercel.app"
-    "https://estudiovarq.com.ar/"
+    "https://estudiovarq.com.ar"
+    "estudiovarq-website.vercel.app"
 ]
 
 app.add_middleware(
