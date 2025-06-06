@@ -21,7 +21,6 @@ class FormData(BaseModel):
     kitchen: str
     lastName: str
     livingRoom: str
-    location: str
     mainBedroom: str
     name: str
     phone: str
@@ -39,7 +38,7 @@ def wizardForm(form_data: FormData):
         
     receiver_email = "iweb.contacto@gmail.com"
     subject = f"Nuevos detalles de proyecto desde la Web de: {form_data.name}"
-    body = f"Datos del cliente:\n \nNombre: {form_data.name}\nApellido: {form_data.lastName}\nTeléfono: {form_data.phone}\nEmail: {form_data.email}\nDirección: {form_data.address}\nUbicación: {form_data.location}\nZona de terreno existente: {form_data.zone}\n \nDatos del proyecto:\n \nFecha de inicio: {form_data.startDate}\nBaño: {form_data.bathroom}\nComedor: {form_data.diningRoom}\nCocina: {form_data.kitchen}\nLiving: {form_data.livingRoom}\nOtro tipo de ambiente: {form_data.anotherPlace}\nDormitorio principal: {form_data.mainBedroom}\nDormitorio secundario: {form_data.secondBedroom}\nPlantas: {form_data.plants}\nCochera: {form_data.garage}\nComentarios: {form_data.comments}"
+    body = f"Datos del cliente:\n \nNombre: {form_data.name}\nApellido: {form_data.lastName}\nTeléfono: {form_data.phone}\nEmail: {form_data.email}\nDirección: {form_data.address}\nZona de terreno existente: {form_data.zone}\n \nDatos del proyecto:\n \nFecha de inicio: {form_data.startDate}\nBaño: {form_data.bathroom}\nComedor: {form_data.diningRoom}\nCocina: {form_data.kitchen}\nLiving: {form_data.livingRoom}\nOtro tipo de ambiente: {form_data.anotherPlace}\nDormitorio principal: {form_data.mainBedroom}\nDormitorio secundario: {form_data.secondBedroom}\nPlantas: {form_data.plants}\nCochera: {form_data.garage}\nComentarios: {form_data.comments}"
     msg = MIMEMultipart()
     msg['From'] = sender_email
     msg['To'] = receiver_email
