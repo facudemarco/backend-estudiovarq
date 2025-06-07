@@ -149,24 +149,41 @@ async def update_house(
 @router.delete('/houses/{id}')
 def delete_house(id: str):
     try:
+        urls = []
         with engine.connect() as conn:
-            urls = list(conn.execute(
-                text("SELECT url FROM houses_imgs WHERE house_id = :id"), {"id": id}
-            ).scalars().all())
+            urls += conn.execute(
+                text("SELECT url FROM houses_imgs WHERE house_id = :id"),
+                {"id": id}
+            ).scalars().all()
             main = conn.execute(
-                text("SELECT url FROM houses_main_imgs WHERE house_id = :id"), {"id": id}
+                text("SELECT url FROM houses_main_imgs WHERE house_id = :id"),
+                {"id": id}
             ).fetchone()
             if main:
                 urls.append(main[0])
+
         for u in urls:
-            fname = u.split("/images/")[-1]
-            fpath = os.path.join(IMAGES_DIR, fname)
-            if os.path.exists(fpath):
-                os.remove(fpath)
+            fn = u.split("/images/")[-1]
+            path = os.path.join(IMAGES_DIR, fn)
+            if os.path.exists(path):
+                os.remove(path)
+
         with engine.begin() as conn:
-            res = conn.execute(text("DELETE FROM Houses WHERE id = :id"), {"id": id})
-            if res.rowcount == 0:
+            conn.execute(
+                text("DELETE FROM houses_imgs WHERE house_id = :id"),
+                {"id": id}
+            )
+            conn.execute(
+                text("DELETE FROM houses_main_imgs WHERE house_id = :id"),
+                {"id": id}
+            )
+            result = conn.execute(
+                text("DELETE FROM Houses WHERE id = :id"),
+                {"id": id}
+            )
+            if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="House not found.")
+
         return {"message": "House and associated images deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
