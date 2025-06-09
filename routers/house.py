@@ -109,7 +109,7 @@ async def update_house(
     id: str,
     title: str = Form(...),
     houseType: str = Form(...),
-    main_image: UploadFile | None = File(None, description="New main image (optional)"),
+    main_image: UploadFile | None = File(description="New main image (optional)"),
     images: List[UploadFile] = File(default=[], description="Additional images (optional)")
 ):
     try:
@@ -131,10 +131,16 @@ async def update_house(
                 with open(path, "wb") as buf:
                     shutil.copyfileobj(main_image.file, buf)
                 url_main = f"{DOMAIN_URL}/{fname}"
-                conn.execute(
+                res = conn.execute(
                     text("UPDATE houses_main_imgs SET url = :url WHERE house_id = :id"),
                     {"id": id, "url": url_main}
                 )
+                
+                if res.rowcount == 0:
+                    conn.execute(
+                        text("INSERT INTO houses_main_imgs (house_id, url) VALUES (:id, :url)"),
+                        {"id": id, "url": url_main}
+                    )
 
             for img in images:
                 if not hasattr(img, "filename"):
