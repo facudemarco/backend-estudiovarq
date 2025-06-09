@@ -1,3 +1,4 @@
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from sqlalchemy import text
 from Database.dbGetConnection import engine
@@ -87,17 +88,18 @@ async def create_house(
                 {"id": str(uuid.uuid4()), "house_id": generated_id, "url": url_main}
             )
             # other images
-            for img in images:
-                ext = os.path.splitext(img.filename or "file.jpg")[1]
-                fname = f"{uuid.uuid4()}{ext}"
-                path = os.path.join(IMAGES_DIR, fname)
-                with open(path, "wb") as buf:
-                    shutil.copyfileobj(img.file, buf)
-                url = f"{DOMAIN_URL}/{fname}"
-                conn.execute(
-                    text("INSERT INTO houses_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
-                    {"id": str(uuid.uuid4()), "house_id": generated_id, "url": url}
-                )
+            if images:
+                for img in images:
+                    ext = os.path.splitext(img.filename or "file.jpg")[1]
+                    fname = f"{uuid.uuid4()}{ext}"
+                    path = os.path.join(IMAGES_DIR, fname)
+                    with open(path, "wb") as buf:
+                        shutil.copyfileobj(img.file, buf)
+                    url = f"{DOMAIN_URL}/{fname}"
+                    conn.execute(
+                        text("INSERT INTO houses_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
+                        {"id": str(uuid.uuid4()), "house_id": generated_id, "url": url}
+                    )
         return {"message": f"House created successfully, ID: {generated_id}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -107,12 +109,13 @@ async def update_house(
     id: str,
     title: str = Form(...),
     houseType: str = Form(...),
-    main_image: UploadFile = File(None, description="New main image (optional)"),
-    images: list[UploadFile] = File(default=[], description="Additional images")
+    main_image: UploadFile | None = File(None, description="New main image (optional)"),
+    images: List[UploadFile] = File(default=[], description="Additional images (optional)")
 ):
     try:
         if not os.path.exists(IMAGES_DIR):
             os.makedirs(IMAGES_DIR, exist_ok=True)
+
         with engine.begin() as conn:
             res = conn.execute(
                 text("UPDATE Houses SET title = :title, houseType = :houseType WHERE id = :id"),
@@ -120,6 +123,7 @@ async def update_house(
             )
             if res.rowcount == 0:
                 raise HTTPException(status_code=404, detail="House not found.")
+
             if main_image:
                 ext = os.path.splitext(main_image.filename or "file.jpg")[1]
                 fname = f"{uuid.uuid4()}{ext}"
@@ -131,7 +135,11 @@ async def update_house(
                     text("UPDATE houses_main_imgs SET url = :url WHERE house_id = :id"),
                     {"id": id, "url": url_main}
                 )
+
             for img in images:
+                if not hasattr(img, "filename"):
+                    continue
+
                 ext = os.path.splitext(img.filename or "file.jpg")[1]
                 fname = f"{uuid.uuid4()}{ext}"
                 path = os.path.join(IMAGES_DIR, fname)
@@ -142,7 +150,9 @@ async def update_house(
                     text("INSERT INTO houses_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
                     {"id": str(uuid.uuid4()), "house_id": id, "url": url}
                 )
+
         return {"message": "House updated successfully"}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
