@@ -24,7 +24,7 @@ class FormData(BaseModel):
     mainBedroom: str
     name: str
     phone: str
-    totalsM2: int
+    totalsM2: float
     plants: str
     secondBedroom: str
     startDate: str
