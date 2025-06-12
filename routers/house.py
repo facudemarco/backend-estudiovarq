@@ -117,11 +117,16 @@ async def update_house(
             os.makedirs(IMAGES_DIR, exist_ok=True)
 
         with engine.begin() as conn:
-            res = conn.execute(
-                text("UPDATE Houses SET title = :title, houseType = :houseType WHERE id = :id"),
+            result = conn.execute(
+                text("""
+                    UPDATE Houses SET 
+                        title = :title,
+                        houseType = :houseType
+                    WHERE id = :id
+                """),
                 {"id": id, "title": title, "houseType": houseType}
             )
-            if res.rowcount == 0:
+            if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="House not found.")
 
             if main_image:
@@ -131,37 +136,40 @@ async def update_house(
                 with open(path, "wb") as buf:
                     shutil.copyfileobj(main_image.file, buf)
                 url_main = f"{DOMAIN_URL}/{fname}"
-                res = conn.execute(
-                    text("UPDATE houses_main_imgs SET url = :url WHERE house_id = :id"),
-                    {"id": id, "url": url_main}
+
+                conn.execute(
+                    text("""
+                        INSERT INTO houses_main_imgs (id, house_id, url)
+                        VALUES (:uuid, :house_id, :url)
+                        ON DUPLICATE KEY UPDATE url = :url
+                    """),
+                    {"uuid": str(uuid.uuid4()), "house_id": id, "url": url_main}
                 )
-                
-                if res.rowcount == 0:
-                    conn.execute(
-                        text("INSERT INTO houses_main_imgs (house_id, url) VALUES (:id, :url)"),
-                        {"id": id, "url": url_main}
-                    )
 
             for img in images:
-                if not hasattr(img, "filename"):
+                if not hasattr(img, "filename") or img.filename == "":
                     continue
 
-                ext = os.path.splitext(img.filename or "file.jpg")[1]
-                fname = f"{uuid.uuid4()}{ext}"
-                path = os.path.join(IMAGES_DIR, fname)
-                with open(path, "wb") as buf:
-                    shutil.copyfileobj(img.file, buf)
-                url = f"{DOMAIN_URL}/{fname}"
+                ext = os.path.splitext(str(img.filename or "file.jpg"))[1]
+                filename = f"{uuid.uuid4()}{ext}"
+                filepath = os.path.join(IMAGES_DIR, filename)
+                with open(filepath, "wb") as buffer:
+                    shutil.copyfileobj(img.file, buffer)
+                public_url = f"{DOMAIN_URL}/{filename}"
+
                 conn.execute(
-                    text("INSERT INTO houses_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
-                    {"id": str(uuid.uuid4()), "house_id": id, "url": url}
+                    text("""
+                        INSERT INTO houses_imgs (id, house_id, url)
+                        VALUES (:id, :house_id, :url)
+                    """),
+                    {"id": str(uuid.uuid4()), "house_id": id, "url": public_url}
                 )
 
         return {"message": "House updated successfully"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
 @router.delete('/houses/{id}')
 def delete_house(id: str):
     try:

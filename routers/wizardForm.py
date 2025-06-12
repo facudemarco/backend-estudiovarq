@@ -37,8 +37,8 @@ def wizardForm(form_data: FormData):
     if not sender_password:
         raise HTTPException(status_code=500, detail="La contraseña del remitente no está configurada")
         
-    receiver_email = "iweb.contacto@gmail.com"
-    subject = f"Nuevos detalles de proyecto desde la Web de: {form_data.name}"
+    receiver_email = "consultaform@estudiovarq.com.ar"
+    subject = f"Nuevos detalles de proyecto desde el inicio de la Web de: {form_data.name}"
     body = f"Datos del cliente:\n \nNombre: {form_data.name}\nApellido: {form_data.lastName}\nTeléfono: {form_data.phone}\nEmail: {form_data.email}\nDirección: {form_data.address}\nZona de terreno existente: {form_data.zone}\n \nDatos del proyecto:\n \nFecha de inicio: {form_data.startDate}\nBaño: {form_data.bathroom}\nComedor: {form_data.diningRoom}\nCocina: {form_data.kitchen}\nLiving: {form_data.livingRoom}\nOtro tipo de ambiente: {form_data.anotherPlace}\nDormitorio principal: {form_data.mainBedroom}\nDormitorio secundario: {form_data.secondBedroom}\nPlantas: {form_data.plants}\nCochera: {form_data.garage}\nTotal de metros cuadrados: {form_data.totalsM2} \nComentarios: {form_data.comments}"
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -58,4 +58,36 @@ def wizardForm(form_data: FormData):
 @router.post("/wizardForm")
 async def send_email(form_data: FormData):
     wizardForm(form_data)
+    return {"message": "Formulario enviado exitosamente"}
+
+# -----
+
+def wizardFormHouses(form_data: FormData):
+    sender_email = "iweb.contacto@gmail.com"
+    sender_password = os.environ.get("SENDER_PASSWORD")
+    
+    if not sender_password:
+        raise HTTPException(status_code=500, detail="La contraseña del remitente no está configurada")
+        
+    receiver_email = "consultaform@estudiovarq.com.ar"
+    subject = f"Nuevos detalles de proyecto desde la sección casas de: {form_data.name}"
+    body = f"Datos del cliente:\n \nNombre: {form_data.name}\nApellido: {form_data.lastName}\nTeléfono: {form_data.phone}\nEmail: {form_data.email}\nDirección: {form_data.address}\nZona de terreno existente: {form_data.zone}\n \nDatos del proyecto:\n \nFecha de inicio: {form_data.startDate}\nBaño: {form_data.bathroom}\nComedor: {form_data.diningRoom}\nCocina: {form_data.kitchen}\nLiving: {form_data.livingRoom}\nOtro tipo de ambiente: {form_data.anotherPlace}\nDormitorio principal: {form_data.mainBedroom}\nDormitorio secundario: {form_data.secondBedroom}\nPlantas: {form_data.plants}\nCochera: {form_data.garage}\nTotal de metros cuadrados: {form_data.totalsM2} \nComentarios: {form_data.comments}"
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, receiver_email, msg.as_string())
+        print("Correo enviado exitosamente")
+    except Exception as e:
+        print(f"Error al enviar el correo: {e}")
+        raise HTTPException(status_code=500, detail="Error al enviar el correo")
+
+@router.post("/wizardFormHouses")
+async def send_email2(form_data: FormData):
+    wizardFormHouses(form_data)
     return {"message": "Formulario enviado exitosamente"}
