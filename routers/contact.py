@@ -26,8 +26,8 @@ def sendEmail(form_data: FormData):
     if not sender_password:
         raise HTTPException(status_code=500, detail="La contraseña del remitente no está configurada")
         
-    receiver_email = "iweb.contacto@gmail.com"
-    subject = f"Nuevo correo de: {form_data.full_name} desde el formulario de contacto"
+    receiver_email = "consultaform@estudiovarq.com.ar"
+    subject = f"{form_data.full_name} - Contacto"
     body = f"Nombre completo: {form_data.full_name}\nTeléfono: {form_data.phone}\nEmail: {form_data.email}\nDirección: {form_data.address}\nZona: {form_data.zone}\nFecha de inicio: {form_data.startDate}\nComentarios: {form_data.comments}"
 
     msg = MIMEMultipart()
