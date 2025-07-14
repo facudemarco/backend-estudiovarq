@@ -8,7 +8,7 @@ import shutil
 
 router = APIRouter()
 
-IMAGES_DIR = "/app/images"
+IMAGES_DIR = "images/"
 DOMAIN_URL = "https://api-estudiovarq.iwebtecnology.com/images"
 
 @router.get('/houses')
