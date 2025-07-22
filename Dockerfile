@@ -1,3 +1,10 @@
+FROM node:18 AS node-deps
+
+WORKDIR /whatsapp-agent
+COPY whatsapp-agent/package*.json ./
+RUN npm install
+COPY whatsapp-agent .
+
 FROM python
 
 RUN apt-get update && apt-get install -y \

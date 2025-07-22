@@ -1,5 +1,7 @@
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
+import subprocess
+import json
 
 router = APIRouter()
 
@@ -15,3 +17,21 @@ async def whatsapp_webhook(msg: WhatsAppMsg, background_tasks: BackgroundTasks):
 def handle_whatsapp(phone: str, text: str):
     # Aquí llama a tu flujo n8n, o procesa
     print(f"Webhook received: {phone} -> {text}")
+
+class MessageRequest(BaseModel):
+    phone: str
+    message: str
+
+@router.post("/send")
+def send_message(req: MessageRequest):
+    try:
+        result = subprocess.run(
+            ["node", "app/whatsapp/agent.js", req.phone, req.message],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            raise Exception(result.stderr)
+        return {"status": "ok", "log": result.stdout}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
