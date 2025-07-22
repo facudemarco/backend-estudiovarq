@@ -2,6 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 import subprocess
 import json
+import requests
 
 router = APIRouter()
 
@@ -25,14 +26,11 @@ class MessageRequest(BaseModel):
 @router.post("/send")
 def send_message(req: MessageRequest):
     try:
-        result = subprocess.run(
-            ["node", "whatsapp-agent/agent.js", req.phone, req.message],
-            capture_output=True,
-            text=True,
-            cwd = "/app"
-        )
-        if result.returncode != 0:
-            raise Exception(result.stderr)
-        return {"status": "ok", "log": result.stdout}
+        response = requests.post("https://api-estudiovarq.iwebtecnology.com/send", json={
+            "phone": req.phone,
+            "message": req.message
+        })
+        response.raise_for_status()
+        return {"status": "ok", "log": response.json()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
