@@ -5,7 +5,7 @@ from models.houses import Houses
 from routers.house import router as routerHouses
 from routers.contact import router as routerContact
 from routers.wizardForm import router as routerWizardForm
-from routers.whatsapp import router as routerWhatsApp
+# from routers.whatsapp import router as routerWhatsApp
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -38,4 +38,4 @@ if __name__ == "__main__":
 app.include_router(routerHouses)
 app.include_router(routerContact)
 app.include_router(routerWizardForm)
-app.include_router(routerWhatsApp)
+# app.include_router(routerWhatsApp)
