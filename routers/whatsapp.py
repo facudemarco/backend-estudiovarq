@@ -26,7 +26,7 @@ class MessageRequest(BaseModel):
 def send_message(req: MessageRequest):
     try:
         result = subprocess.run(
-            ["node", "whatsapp/agent.js", req.phone, req.message],
+            ["node", "whatsapp-agent/agent.js", req.phone, req.message],
             capture_output=True,
             text=True,
             cwd = "/app"
