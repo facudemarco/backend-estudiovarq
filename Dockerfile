@@ -1,17 +1,27 @@
-FROM node:18 AS node-deps
+FROM python:3.10-slim
 
-WORKDIR /whatsapp-agent
-COPY whatsapp-agent/package*.json ./
-RUN npm install
-COPY whatsapp-agent .
-
-FROM python
-
+# --- Instalaciones base necesarias ---
 RUN apt-get update && apt-get install -y \
-    default-libmysqlclient-dev build-essential pkg-config
+    curl gnupg build-essential pkg-config default-libmysqlclient-dev git\
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
 
+# --- Directorio de trabajo ---
 WORKDIR /app
-COPY . /app
-RUN pip install -r requirements.txt
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --- Copiamos e instalamos dependencias de Python ---
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# --- Copiamos el resto del backend ---
+COPY . .
+
+# --- Instalamos las dependencias del whatsapp-agent ---
+WORKDIR /app/whatsapp-agent
+RUN npm install
+
+# --- Volvemos al root del backend ---
+WORKDIR /app
+
+# --- Comando de arranque ---
+CMD ["sh", "-c", "node whatsapp-agent/agent.js & uvicorn main:app --host 0.0.0.0 --port 8000"]
