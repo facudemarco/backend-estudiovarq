@@ -26,9 +26,10 @@ class MessageRequest(BaseModel):
 def send_message(req: MessageRequest):
     try:
         result = subprocess.run(
-            ["node", "app/whatsapp/agent.js", req.phone, req.message],
+            ["node", "whatsapp/agent.js", req.phone, req.message],
             capture_output=True,
-            text=True
+            text=True,
+            cwd = "/app"
         )
         if result.returncode != 0:
             raise Exception(result.stderr)
