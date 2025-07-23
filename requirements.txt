@@ -9,3 +9,4 @@ python-multipart
 aiosmtplib
 python-jose
 pydantic[email]
+requests

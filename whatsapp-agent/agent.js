@@ -42,4 +42,4 @@ app.post('/send', async (req, res) => {
 
 startSock(); // ✅ Disparás la función que contiene el await
 
-app.listen(3008, () => console.log("📡 Agent escuchando en puerto 3008"));
+app.listen(3008, '0.0.0.0', () => console.log("📡 Agent escuchando en puerto 3008"));
