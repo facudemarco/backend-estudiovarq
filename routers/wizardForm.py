@@ -5,6 +5,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
+import requests
 
 load_dotenv()
 
@@ -23,7 +24,7 @@ class FormData(BaseModel):
     livingRoom: str
     mainBedroom: str
     name: str
-    phone: str
+    phone: int
     totalsM2: float
     plants: str
     secondBedroom: str
@@ -54,6 +55,11 @@ def wizardForm(form_data: FormData):
     except Exception as e:
         print(f"Error al enviar el correo: {e}")
         raise HTTPException(status_code=500, detail="Error al enviar el correo")
+    try:
+        webhook_url = "https://n8n.iwebtecnology.com/webhook/estudiovarq-chat" 
+        requests.post(webhook_url, json=form_data.dict())
+    except Exception as e:
+        print(f"Error al enviar datos a n8n: {e}")
 
 @router.post("/wizardForm")
 async def send_email(form_data: FormData):
@@ -86,6 +92,11 @@ def wizardFormHouses(form_data: FormData):
     except Exception as e:
         print(f"Error al enviar el correo: {e}")
         raise HTTPException(status_code=500, detail="Error al enviar el correo")
+    try:
+        webhook_url = "https://n8n.iwebtecnology.com/webhook/estudiovarq-chat" 
+        requests.post(webhook_url, json=form_data.dict())
+    except Exception as e:
+        print(f"Error al enviar datos a n8n: {e}")
 
 @router.post("/wizardFormHouses")
 async def send_email2(form_data: FormData):
