@@ -1,12 +1,11 @@
-FROM node:18-slim
+FROM node:20-alpine
 
-# Instalar git (requerido por dependencias npm)
-RUN apt-get update && apt-get install -y git
+RUN apk add --no-cache git
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm install --omit=optional
 
 COPY . .
 
