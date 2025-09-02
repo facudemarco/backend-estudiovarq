@@ -38,7 +38,7 @@ def wizardForm(form_data: FormData):
     if not sender_password:
         raise HTTPException(status_code=500, detail="La contraseña del remitente no está configurada")
 
-    receiver_email = "fac.demarco37@gmail.com"
+    receiver_email = "consultaform@estudiovarq.com.ar"
     subject = f"{form_data.name} {form_data.lastName} - M2 - Inicio"
     body = (
         f"Datos del cliente:\n \nNombre: {form_data.name}\nApellido: {form_data.lastName}\n"
