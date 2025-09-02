@@ -31,6 +31,7 @@ class FormData(BaseModel):
     secondBedroom: str
     startDate: str
     zone: str
+    lead_id: str
 
 def wizardForm(form_data: FormData):
     sender_email = "iweb.contacto@gmail.com"
