@@ -3,11 +3,13 @@ global.crypto = require('node:crypto');
 const express = require('express');
 const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
+
 const fetch = require('node-fetch');
 const qrcode = require('qrcode-terminal');
 
 const N8N_REPLIES_URL    = process.env.N8N_REPLIES_URL    || 'https://n8n.iwebtecnology.com/webhook/estudiovarq-replies';
 const N8N_REPLIES_SECRET = process.env.N8N_REPLIES_SECRET || 'MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq';
+
 
 const app = express();
 app.use(express.json());
