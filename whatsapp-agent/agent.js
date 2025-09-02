@@ -6,8 +6,8 @@ const pino = require('pino');
 const fetch = require('node-fetch');
 const qrcode = require('qrcode-terminal');
 
-const BACKEND_WEBHOOK_URL = process.env.BACKEND_WEBHOOK_URL || 'http://127.0.0.1:8000/api/whatsapp-webhook';
-const REPLIES_SECRET      = process.env.REPLIES_SECRET      || 'MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq';
+const N8N_REPLIES_URL    = process.env.N8N_REPLIES_URL    || 'https://n8n.iwebtecnology.com/webhook/estudiovarq-replies';
+const N8N_REPLIES_SECRET = process.env.N8N_REPLIES_SECRET || 'MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq';
 
 const app = express();
 app.use(express.json());
@@ -20,9 +20,34 @@ const logger = pino({
 let sock;
 let reconnectEnabled = true;
 
-function normalizeE164Plus(jidOrPhone) {
-  const digits = String(jidOrPhone).replace(/[^\d]/g, '');
-  return `+${digits}`;
+function normalizeE164Plus(x) {
+  const digits = String(x || '').replace(/[^\d]/g, '');
+  return digits ? `+${digits}` : '';
+}
+
+// --- Extrae texto de forma robusta (desenvuelve mensajes) ---
+function extractText(msg) {
+  const m = msg?.message || {};
+  // Recursivo: unwrap contenedores
+  if (m.ephemeralMessage?.message) return extractText({ message: m.ephemeralMessage.message });
+  if (m.viewOnceMessage?.message)  return extractText({ message: m.viewOnceMessage.message });
+  if (m.viewOnceMessageV2?.message) return extractText({ message: m.viewOnceMessageV2.message });
+  if (m.documentWithCaptionMessage?.message) return extractText({ message: m.documentWithCaptionMessage.message });
+
+  // Texto / captions / respuestas de botones/listas
+  const txt =
+    m.conversation ||
+    m.extendedTextMessage?.text ||
+    m.imageMessage?.caption ||
+    m.videoMessage?.caption ||
+    m.buttonsResponseMessage?.selectedDisplayText ||
+    m.listResponseMessage?.title ||
+    m.templateButtonReplyMessage?.selectedId ||
+    '';
+
+  // Si no hay texto pero hay media, marcamos como "[media]"
+  const hasMedia = !!(m.imageMessage || m.videoMessage || m.audioMessage || m.documentMessage || m.stickerMessage);
+  return txt && txt.trim().length ? txt.trim() : (hasMedia ? '[media]' : '');
 }
 
 async function startSock() {
@@ -32,9 +57,10 @@ async function startSock() {
     auth: state,
     logger,
     browser: ['Ubuntu', 'Chrome', '122.0.0'],
-    shouldIgnoreJid: () => false,
+    shouldIgnoreJid: () => false,        // << NO ignorar entrantes
     syncFullHistory: false,
     phone: { code: false, number: null },
+    printQRInTerminal: false,
   });
 
   sock.ev.on('creds.update', saveCreds);
@@ -58,39 +84,50 @@ async function startSock() {
     }
   });
 
-  // ÚNICO listener de replies (no duplicar)
-  sock.ev.on('messages.upsert', async (m) => {
+  // ÚNICO listener de replies
+  sock.ev.on('messages.upsert', async (evt) => {
     try {
-      if (m.type !== 'notify') return;
-      for (const msg of m.messages || []) {
-        if (msg.key.fromMe) continue;
+      if (evt.type !== 'notify') return;
+
+      for (const msg of evt.messages || []) {
+        if (msg.key.fromMe) continue;                    // ignorá lo que vos mismo enviaste
 
         const jid = msg.key.remoteJid || '';
+        // Ignorar grupos (si no los querés procesar)
+        if (jid.includes('-') && jid.endsWith('@g.us')) continue;
+
         const phone = normalizeE164Plus(jid.split('@')[0] || '');
-        const text =
-          msg.message?.conversation ||
-          msg.message?.extendedTextMessage?.text ||
-          msg.message?.imageMessage?.caption ||
-          msg.message?.videoMessage?.caption ||
-          '';
+        const text  = extractText(msg);
 
-        if (!text) continue;
+        // Si igual no logramos extraer nada, lo consideramos vacío
+        if (!phone) continue;
+        if (!text) {
+          // Igual reenviamos para marcar last_reply_at (sin texto)
+          console.log(`[agent] inbound from ${phone} (empty text)`);
+        } else {
+          console.log(`[agent] inbound from ${phone}: "${text}"`);
+        }
 
-        const resp = await fetch(BACKEND_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Secret': REPLIES_SECRET },
-          body: JSON.stringify({ from_: phone, text })
-        });
-        const body = await resp.text();
-        console.log(`[agent→backend] ${resp.status} ${body}`);
+        // Post directo a n8n (webhook replies)
+        try {
+          const resp = await fetch(N8N_REPLIES_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Secret': N8N_REPLIES_SECRET },
+            body: JSON.stringify({ phone, text })
+          });
+          const body = await resp.text();
+          console.log(`[agent→n8n] ${resp.status} ${body}`);
+        } catch (e) {
+          console.error('agent→n8n fetch error:', e);
+        }
       }
     } catch (e) {
-      console.error('agent forward error:', e);
+      console.error('messages.upsert handler error:', e);
     }
   });
 }
 
-// Endpoint para enviar mensajes
+// Endpoint para enviar mensajes salientes
 app.post('/send', async (req, res) => {
   const { phone, message } = req.body;
   if (!sock) return res.status(503).json({ error: 'WhatsApp no conectado' });
