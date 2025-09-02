@@ -27,16 +27,14 @@ function normalizeE164Plus(x) {
   return digits ? `+${digits}` : '';
 }
 
-// --- Extrae texto de forma robusta (desenvuelve mensajes) ---
+// Extrae texto/caption de cualquier tipo de mensaje (desenvuelve contenedores)
 function extractText(msg) {
   const m = msg?.message || {};
-  // Recursivo: unwrap contenedores
-  if (m.ephemeralMessage?.message) return extractText({ message: m.ephemeralMessage.message });
-  if (m.viewOnceMessage?.message)  return extractText({ message: m.viewOnceMessage.message });
-  if (m.viewOnceMessageV2?.message) return extractText({ message: m.viewOnceMessageV2.message });
+  if (m.ephemeralMessage?.message)          return extractText({ message: m.ephemeralMessage.message });
+  if (m.viewOnceMessage?.message)           return extractText({ message: m.viewOnceMessage.message });
+  if (m.viewOnceMessageV2?.message)         return extractText({ message: m.viewOnceMessageV2.message });
   if (m.documentWithCaptionMessage?.message) return extractText({ message: m.documentWithCaptionMessage.message });
 
-  // Texto / captions / respuestas de botones/listas
   const txt =
     m.conversation ||
     m.extendedTextMessage?.text ||
@@ -47,10 +45,10 @@ function extractText(msg) {
     m.templateButtonReplyMessage?.selectedId ||
     '';
 
-  // Si no hay texto pero hay media, marcamos como "[media]"
   const hasMedia = !!(m.imageMessage || m.videoMessage || m.audioMessage || m.documentMessage || m.stickerMessage);
-  return txt && txt.trim().length ? txt.trim() : (hasMedia ? '[media]' : '');
+  return txt && txt.trim() ? txt.trim() : (hasMedia ? '[media]' : '');
 }
+
 
 async function startSock() {
   const { state, saveCreds } = await useMultiFileAuthState('./auth');
@@ -86,47 +84,34 @@ async function startSock() {
     }
   });
 
-  // ÚNICO listener de replies
-  sock.ev.on('messages.upsert', async (evt) => {
-    try {
-      if (evt.type !== 'notify') return;
+sock.ev.on('messages.upsert', async (evt) => {
+  try {
+    if (evt.type !== 'notify') return;
 
-      for (const msg of evt.messages || []) {
-        if (msg.key.fromMe) continue;                    // ignorá lo que vos mismo enviaste
+    for (const msg of evt.messages || []) {
+      if (msg.key.fromMe) continue;  // ignora tus propios mensajes
 
-        const jid = msg.key.remoteJid || '';
-        // Ignorar grupos (si no los querés procesar)
-        if (jid.includes('-') && jid.endsWith('@g.us')) continue;
+      const jid = msg.key.remoteJid || '';
+      if (jid.includes('-') && jid.endsWith('@g.us')) continue; // opcional: ignorar grupos
 
-        const phone = normalizeE164Plus(jid.split('@')[0] || '');
-        const text  = extractText(msg);
+      const phone = normalizeE164Plus(jid.split('@')[0] || '');
+      const text  = extractText(msg);
+      if (!phone) continue;
 
-        // Si igual no logramos extraer nada, lo consideramos vacío
-        if (!phone) continue;
-        if (!text) {
-          // Igual reenviamos para marcar last_reply_at (sin texto)
-          console.log(`[agent] inbound from ${phone} (empty text)`);
-        } else {
-          console.log(`[agent] inbound from ${phone}: "${text}"`);
-        }
+      console.log('[inbound]', { phone, text });
 
-        // Post directo a n8n (webhook replies)
-        try {
-          const resp = await fetch(N8N_REPLIES_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Secret': N8N_REPLIES_SECRET },
-            body: JSON.stringify({ phone, text })
-          });
-          const body = await resp.text();
-          console.log(`[agent→n8n] ${resp.status} ${body}`);
-        } catch (e) {
-          console.error('agent→n8n fetch error:', e);
-        }
-      }
-    } catch (e) {
-      console.error('messages.upsert handler error:', e);
+      const resp = await fetch(N8N_REPLIES_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Secret': N8N_REPLIES_SECRET },
+        body: JSON.stringify({ phone, text })
+      });
+      const body = await resp.text();
+      console.log(`[agent→n8n] ${resp.status} ${body}`);
     }
-  });
+  } catch (e) {
+    console.error('messages.upsert error:', e);
+  }
+});
 }
 
 // Endpoint para enviar mensajes salientes
