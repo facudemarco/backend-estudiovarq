@@ -7,17 +7,14 @@ import requests
 router = APIRouter()
 
 # === Config ===
-N8N_REPLIES_URL = os.getenv(
-    "N8N_REPLIES_URL",
-    "https://n8n.iwebtecnology.com/webhook/estudiovarq-replies",
-)
+N8N_REPLIES_URL = "https://n8n.iwebtecnology.com/webhook/estudiovarq-replies"
 REPLIES_SECRET = os.getenv(
     "REPLIES_SECRET",
     "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq",
 )
 WHATSAPP_AGENT_URL = os.getenv(
     "WHATSAPP_AGENT_URL",
-    "http://127.0.0.1:3008/send",
+    "http://localhost:3008/send",
 )
 
 # === Models ===
