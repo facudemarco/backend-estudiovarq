@@ -107,10 +107,41 @@ async def send_email(form_data: FormData):
     return {"message": "Formulario enviado exitosamente"}
 
 def wizardFormHouses(form_data: FormData):
+    sender_email = "iweb.contacto@gmail.com"
+    sender_password = os.environ.get("SENDER_PASSWORD")
+    if not sender_password:
+        raise HTTPException(status_code=500, detail="La contraseña del remitente no está configurada")
+
+    receiver_email = "consultaform@estudiovarq.com.ar"
+    subject = f"{form_data.name} {form_data.lastName} - M2 - Casas"
+    body = (
+        f"Datos del cliente:\n \nNombre: {form_data.name}\nApellido: {form_data.lastName}\n"
+        f"Teléfono: {form_data.phone}\nEmail: {form_data.email}\nDirección: {form_data.address}\n"
+        f"Zona de terreno existente: {form_data.zone}\n \nDatos del proyecto:\n \nFecha de inicio: {form_data.startDate}\n"
+        f"Baño: {form_data.bathroom}\nComedor: {form_data.diningRoom}\nCocina: {form_data.kitchen}\n"
+        f"Living: {form_data.livingRoom}\nOtro tipo de ambiente: {form_data.anotherPlace}\n"
+        f"Dormitorio principal: {form_data.mainBedroom}\nDormitorio secundario: {form_data.secondBedroom}\n"
+        f"Plantas: {form_data.plants}\nCochera: {form_data.garage}\nTotal de metros cuadrados: {form_data.totalsM2} \n"
+        f"Comentarios: {form_data.comments}"
+    )
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, receiver_email, msg.as_string())
+        print("Correo enviado exitosamente")
+    except Exception as e:
+        print(f"Error al enviar el correo: {e}")
+        raise HTTPException(status_code=500, detail="Error al enviar el correo")
     try:
         lead_id = str(uuid.uuid4())
         webhook_url = os.environ.get(
-            "N8N_ENTRADA_URL",
+            "N8N_ENTRADA_URL",  # prod
             "https://n8n.iwebtecnology.com/webhook/estudiovarq-chat"
         )
         payload = {
