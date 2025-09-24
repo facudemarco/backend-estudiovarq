@@ -1,5 +1,6 @@
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Form
+from models.houses import Houses, HouseUpdate
 from sqlalchemy import text
 from Database.dbGetConnection import engine
 import uuid
@@ -104,13 +105,7 @@ async def create_house(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put('/houses/{id}')
-async def update_house(
-    house_id: str = Form(...),
-    title: Optional[str] = Form(...),
-    houseType: Optional[str] = Form(...),
-    main_image: Optional[str] = Form(default=None, description="New main image (optional)"),
-    images: List[str] | None= Form(default=[], description="New additional images (optional)")
-):
+async def update_house(id: str, house: HouseUpdate):
     try:
         with engine.begin() as conn:
             result = conn.execute(
@@ -120,41 +115,31 @@ async def update_house(
                         houseType = :houseType
                     WHERE id = :id
                 """),
-                {"id": house_id, "title": title, "houseType": houseType}
+                {"id": id, "title": house.title, "houseType": house.houseType}
             )
             
-            if main_image is not None:
-                conn.execute(
-                    text("DELETE FROM houses_main_imgs WHERE house_id = :id"),
-                    {"id": house_id}
-                )
-                normalized_main = []
-                for d in main_image:
-                    if isinstance(d, str) and "," in d:
-                        normalized_main.extend([x.strip() for x in d.split(",") if x.strip()])
-                    elif d:
-                        normalized_main.append(d.strip())
-                for s in normalized_main:
+            # Main image update
+            conn.execute(
+                text("DELETE FROM houses_main_imgs WHERE house_id = :id"),
+                {"id": id}
+            )
+            if house.main_image:
+                for img_url in house.main_image:
                     conn.execute(
                         text("INSERT INTO houses_main_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
-                        {"id": str(uuid.uuid4()), "house_id": house_id, "url": s}
+                        {"id": str(uuid.uuid4()), "house_id": id, "url": img_url}
                     )
-            
-            if images is not None:
-                conn.execute(
-                    text("DELETE FROM houses_imgs WHERE house_id = :id"),
-                    {"id": house_id}
-                )
-                normalized_images = []
-                for d in images:
-                    if isinstance(d, str) and "," in d:
-                        normalized_images.extend([x.strip() for x in d.split(",") if x.strip()])
-                    elif d:
-                        normalized_images.append(d.strip())
-                for s in normalized_images:
+
+            # Additional images update
+            conn.execute(
+                text("DELETE FROM houses_imgs WHERE house_id = :id"),
+                {"id": id}
+            )
+            if house.images:
+                for img_url in house.images:
                     conn.execute(
                         text("INSERT INTO houses_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
-                        {"id": str(uuid.uuid4()), "house_id": house_id, "url": s}
+                        {"id": str(uuid.uuid4()), "house_id": id, "url": img_url}
                     )
 
             if result.rowcount == 0:
