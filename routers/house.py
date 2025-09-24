@@ -1,15 +1,10 @@
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Form
 from sqlalchemy import text
 from Database.dbGetConnection import engine
 import uuid
-import os
-import shutil
 
 router = APIRouter()
-
-IMAGES_DIR = "images/"
-DOMAIN_URL = "https://api-estudiovarq.iwebtecnology.com/images"
 
 @router.get('/houses')
 def get_houses():
@@ -64,58 +59,59 @@ def get_house_by_id(id: str):
 async def create_house(
     title: str = Form(...),
     houseType: str = Form(...),
-    main_image: UploadFile = File(..., description="Main image"),
-    images: list[UploadFile] = File(default=[], description="Other images")
+    main_image: str = Form(..., description="Main image"),
+    images: List[str] = Form(default=[], description="Additional images")
 ):
     generated_id = str(uuid.uuid4())
     try:
-        if not os.path.exists(IMAGES_DIR):
-            os.makedirs(IMAGES_DIR, exist_ok=True)
+        # main image
+        normalized_main = []
+        for img in main_image:
+            if isinstance(img, str) and "," in img:
+                normalized_main.extend([i.strip() for i in img.split(",") if i.strip()])
+            elif img:
+                normalized_main.append(img)
+        
+        normalized_images = []
+        for img in images:
+            if isinstance(img, str) and "," in img:
+                normalized_images.extend([i.strip() for i in img.split(",") if i.strip()])
+            elif img:
+                normalized_images.append(img)
+        
         with engine.begin() as conn:
             conn.execute(
                 text("INSERT INTO Houses (id, title, houseType) VALUES (:id, :title, :houseType)"),
                 {"id": generated_id, "title": title, "houseType": houseType}
             )
-            # main image
-            ext = os.path.splitext(main_image.filename or "file.jpg")[1]
-            fname = f"{uuid.uuid4()}{ext}"
-            path = os.path.join(IMAGES_DIR, fname)
-            with open(path, "wb") as buf:
-                shutil.copyfileobj(main_image.file, buf)
-            url_main = f"{DOMAIN_URL}/{fname}"
-            conn.execute(
-                text("INSERT INTO houses_main_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
-                {"id": str(uuid.uuid4()), "house_id": generated_id, "url": url_main}
-            )
-            # other images
-            if images:
-                for img in images:
-                    ext = os.path.splitext(img.filename or "file.jpg")[1]
-                    fname = f"{uuid.uuid4()}{ext}"
-                    path = os.path.join(IMAGES_DIR, fname)
-                    with open(path, "wb") as buf:
-                        shutil.copyfileobj(img.file, buf)
-                    url = f"{DOMAIN_URL}/{fname}"
-                    conn.execute(
-                        text("INSERT INTO houses_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
-                        {"id": str(uuid.uuid4()), "house_id": generated_id, "url": url}
-                    )
+                
+            # Main image insertion
+            for img in normalized_main:
+                conn.execute(
+                    text("INSERT INTO houses_main_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
+                    {"id": str(uuid.uuid4()), "house_id": generated_id, "url": img}
+                )
+            
+            # Additional images insertion
+            for img in normalized_images:
+                conn.execute(
+                    text("INSERT INTO houses_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
+                    {"id": str(uuid.uuid4()), "house_id": generated_id, "url": img}
+                )
+                    
         return {"message": f"House created successfully, ID: {generated_id}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put('/houses/{id}')
 async def update_house(
-    id: str,
-    title: str = Form(...),
-    houseType: str = Form(...),
-    main_image: UploadFile | None = File(description="New main image (optional)"),
-    images: List[UploadFile] = File(default=[], description="Additional images (optional)")
+    house_id: str = Form(...),
+    title: Optional[str] = Form(...),
+    houseType: Optional[str] = Form(...),
+    main_image: Optional[str] = Form(default=None, description="New main image (optional)"),
+    images: List[str] | None= Form(default=[], description="New additional images (optional)")
 ):
     try:
-        if not os.path.exists(IMAGES_DIR):
-            os.makedirs(IMAGES_DIR, exist_ok=True)
-
         with engine.begin() as conn:
             result = conn.execute(
                 text("""
@@ -124,47 +120,45 @@ async def update_house(
                         houseType = :houseType
                     WHERE id = :id
                 """),
-                {"id": id, "title": title, "houseType": houseType}
+                {"id": house_id, "title": title, "houseType": houseType}
             )
+            
+            if main_image is not None:
+                conn.execute(
+                    text("DELETE FROM houses_main_imgs WHERE house_id = :id"),
+                    {"id": house_id}
+                )
+                normalized_main = []
+                for d in main_image:
+                    if isinstance(d, str) and "," in d:
+                        normalized_main.extend([x.strip() for x in d.split(",") if x.strip()])
+                    elif d:
+                        normalized_main.append(d.strip())
+                for s in normalized_main:
+                    conn.execute(
+                        text("INSERT INTO houses_main_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
+                        {"id": str(uuid.uuid4()), "house_id": house_id, "url": s}
+                    )
+            
+            if images is not None:
+                conn.execute(
+                    text("DELETE FROM houses_imgs WHERE house_id = :id"),
+                    {"id": house_id}
+                )
+                normalized_images = []
+                for d in images:
+                    if isinstance(d, str) and "," in d:
+                        normalized_images.extend([x.strip() for x in d.split(",") if x.strip()])
+                    elif d:
+                        normalized_images.append(d.strip())
+                for s in normalized_images:
+                    conn.execute(
+                        text("INSERT INTO houses_imgs (id, house_id, url) VALUES (:id, :house_id, :url)"),
+                        {"id": str(uuid.uuid4()), "house_id": house_id, "url": s}
+                    )
+
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="House not found.")
-
-            if main_image:
-                ext = os.path.splitext(main_image.filename or "file.jpg")[1]
-                fname = f"{uuid.uuid4()}{ext}"
-                path = os.path.join(IMAGES_DIR, fname)
-                with open(path, "wb") as buf:
-                    shutil.copyfileobj(main_image.file, buf)
-                url_main = f"{DOMAIN_URL}/{fname}"
-
-                conn.execute(
-                    text("""
-                        INSERT INTO houses_main_imgs (id, house_id, url)
-                        VALUES (:uuid, :house_id, :url)
-                        ON DUPLICATE KEY UPDATE url = :url
-                    """),
-                    {"uuid": str(uuid.uuid4()), "house_id": id, "url": url_main}
-                )
-
-            for img in images:
-                if not hasattr(img, "filename") or img.filename == "":
-                    continue
-
-                ext = os.path.splitext(str(img.filename or "file.jpg"))[1]
-                filename = f"{uuid.uuid4()}{ext}"
-                filepath = os.path.join(IMAGES_DIR, filename)
-                with open(filepath, "wb") as buffer:
-                    shutil.copyfileobj(img.file, buffer)
-                public_url = f"{DOMAIN_URL}/{filename}"
-
-                conn.execute(
-                    text("""
-                        INSERT INTO houses_imgs (id, house_id, url)
-                        VALUES (:id, :house_id, :url)
-                    """),
-                    {"id": str(uuid.uuid4()), "house_id": id, "url": public_url}
-                )
-
         return {"message": "House updated successfully"}
 
     except Exception as e:
@@ -185,12 +179,6 @@ def delete_house(id: str):
             ).fetchone()
             if main:
                 urls.append(main[0])
-
-        for u in urls:
-            fn = u.split("/images/")[-1]
-            path = os.path.join(IMAGES_DIR, fn)
-            if os.path.exists(path):
-                os.remove(path)
 
         with engine.begin() as conn:
             conn.execute(
