@@ -47,13 +47,15 @@ async def whatsapp_webhook(
     return {"ok": True}
 
 def handle_whatsapp(phone: str, text: str):
-    try:
-        payload = {"phone": phone, "text": text}
-        r = requests.post(N8N_REPLIES_URL, json=payload, timeout=10)
-        print(f"backend→n8n: {r.status_code} {r.text[:200]}")
-        r.raise_for_status()
-    except Exception as e:
-        print(f"Error notificando reply a n8n: {e}")
+    # Comentamos la funcionalidad del webhook de replies
+    print(f"backend: mensaje recibido de {phone}: {text}")
+    # try:
+    #     payload = {"phone": phone, "text": text}
+    #     r = requests.post(N8N_REPLIES_URL, json=payload, timeout=10)
+    #     print(f"backend→n8n: {r.status_code} {r.text[:200]}")
+    #     r.raise_for_status()
+    # except Exception as e:
+    #     print(f"Error notificando reply a n8n: {e}")
 
 @router.post("/send")
 def send_message(req: MessageRequest):
