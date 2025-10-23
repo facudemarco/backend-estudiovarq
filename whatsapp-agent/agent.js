@@ -4,6 +4,7 @@ const express = require('express');
 const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
+const path = require('path');
 
 const N8N_REPLIES_URL    = process.env.N8N_REPLIES_URL    || 'https://n8n.iwebtecnology.com/webhook/estudiovarq-replies';
 const N8N_REPLIES_SECRET = process.env.N8N_REPLIES_SECRET || 'MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq';
@@ -49,7 +50,15 @@ function extractText(msg) {
 }
 
 async function startSock() {
-  const { state, saveCreds } = await useMultiFileAuthState('./auth');
+  const AUTH_DIR = path.resolve(__dirname, 'auth');
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+
+  const fs = require('fs');
+
+  if (!fs.existsSync(AUTH_DIR)) {
+    fs.mkdirSync(AUTH_DIR, { recursive: true });
+    console.log('📁 Carpeta ./auth creada para nuevas credenciales');
+  }
 
   sock = makeWASocket({
     auth: state,
@@ -58,7 +67,7 @@ async function startSock() {
     shouldIgnoreJid: () => false,
     syncFullHistory: false,
     phone: { code: false, number: null },
-    printQRInTerminal: false, // Deshabilitado para control manual
+    printQRInTerminal: true, // Deshabilitado para control manual
   });
 
   sock.ev.on('creds.update', saveCreds);
@@ -92,6 +101,15 @@ async function startSock() {
         return;
       }
       
+      if (statusCode === DisconnectReason.badSession || statusCode === 405) {
+        console.log('⚠️ Sesión corrupta detectada, eliminando y regenerando...');
+        const fs = require('fs');
+        fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+        console.log('🧹 Carpeta ./auth eliminada, se generará un nuevo QR');
+        startSock();
+        return;
+      }
+
       if (shouldReconnect && reconnectEnabled) {
         console.log('🔄 Reconectando en 5 segundos…');
         setTimeout(() => {
