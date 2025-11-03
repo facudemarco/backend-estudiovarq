@@ -73,3 +73,4 @@ def send_message(req: MessageRequest):
             return {"status": "ok", "log": r.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+        print(e)
