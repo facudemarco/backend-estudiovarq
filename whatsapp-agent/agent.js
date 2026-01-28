@@ -190,34 +190,45 @@ app.post('/send', async (req, res) => {
 });
 
 
-  sock.ev.on("messages.upsert", async (evt) => {
-    try {
-      if (evt.type !== "notify") return;
-      for (const msg of evt.messages || []) {
-        if (msg.key.fromMe) continue;
-        const jid = msg.key.remoteJid || "";
-        if (jid.includes("-") && jid.endsWith("@g.us")) continue;
-        const phone = normalizeE164Plus(jid.split("@")[0] || "");
-        const text = extractText(msg);
-        if (!phone || !text) continue;
-        console.log("[inbound]", { phone, text });
+ sock.ev.on('messages.upsert', async (evt) => {
+  try {
+    if (evt.type !== 'notify') return;
+    for (const msg of evt.messages || []) {
+      const jid = msg.key.remoteJid || '';
+      if (jid.includes('-') && jid.endsWith('@g.us')) continue; // Ignorar grupos
+      
+      const phone = normalizeE164Plus(jid.split('@')[0] || '');
+      if (!phone) continue;
 
-        try {
-          const resp = await fetch(N8N_REPLIES_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Secret": N8N_REPLIES_SECRET },
-            body: JSON.stringify({ phone, text }),
-          });
-          console.log(`[agent→n8n] ${resp.status}`);
-        } catch (err) {
-          console.error("Error enviando a N8N:", err);
-        }
+      // --- DETECTAR INTERVENCIÓN HUMANA ---
+      if (msg.key.fromMe) {
+        console.log(`[ALERTA] Intervención humana detectada para ${phone}. Avisando a n8n...`);
+        fetch(N8N_REPLIES_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Secret': N8N_REPLIES_SECRET },
+          body: JSON.stringify({ 
+            phone, 
+            text: 'STOP_FLOW_HUMAN', // Texto clave para n8n
+            isManualResponse: true 
+          })
+        }).catch(e => console.error('Error avisando intervención:', e));
+        continue; // No procesamos más este mensaje
       }
-    } catch (e) {
-      console.error("messages.upsert error:", e);
+
+      // --- PROCESAMIENTO NORMAL DE CLIENTE ---
+      const text = extractText(msg);
+      console.log('[inbound]', { phone, text });
+
+      fetch(N8N_REPLIES_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Secret': N8N_REPLIES_SECRET },
+        body: JSON.stringify({ phone, text })
+      }).catch(e => console.error('Error enviando a N8N:', e));
     }
-  });
-}
+  } catch (e) {
+    console.error('messages.upsert error:', e);
+  }
+});
 
 // --- ENDPOINTS PARA CONTROL ---
 app.get("/status", (req, res) => {
