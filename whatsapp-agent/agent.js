@@ -23,6 +23,21 @@ let isAuthenticated = false;
 let lastQRTime = 0;
 const QR_COOLDOWN_MS = 60000;
 
+const STOP_FILE = './stopped.json';
+
+function loadStopped() {
+  try {
+    return JSON.parse(fs.readFileSync(STOP_FILE));
+  } catch {
+    return {};
+  }
+}
+
+function saveStopped(data) {
+  fs.writeFileSync(STOP_FILE, JSON.stringify(data, null, 2));
+}
+
+
 // --- HELPERS ---
 function ensureDirs() {
     if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
@@ -113,17 +128,18 @@ async function startSock() {
                 const phone = normalizeE164Plus(jid.split('@')[0] || '');
                 if (!phone) continue;
 
-                if (msg.key.fromMe) {
-                    console.log(`[human-intervention] Respondiste a ${phone}. Avisando a n8n...`);
-                    await fetch(N8N_REPLIES_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-Secret': N8N_REPLIES_SECRET },
-                        body: JSON.stringify({ phone, text: 'STOP_FLOW_HUMAN', isFromMe: true })
-                    }).catch(e => console.error('Error avisando intervención:', e));
-                    continue; 
+                const stopped = loadStopped();
+
+                if (!msg.key.fromMe) {
+                    const text = extractText(msg);
+
+                    if (text && text !== '[media]') {
+                        stopped[phone] = true;
+                        saveStopped(stopped);
+                        console.log(`[flow-stopped] Cliente ${phone} respondió. Seguimiento cortado.`);
+                    }
                 }
 
-                const text = extractText(msg);
                 console.log('[inbound]', { phone, text });
                 await fetch(N8N_REPLIES_URL, {
                     method: 'POST',
@@ -137,27 +153,42 @@ async function startSock() {
 
 // --- ENDPOINTS ---
 app.post('/send', async (req, res) => {
-    try {
-        const { to, phone, message } = req.body || {};
-        const target = to || phone;
-        if (!target || !message || !sock) return res.status(400).json({ error: 'Datos insuficientes o socket no listo' });
-        
-        const jid = target.includes('@s.whatsapp.net') ? target : `${target}@s.whatsapp.net`;
-        await sock.sendMessage(jid, { text: message });
-        res.json({ ok: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    const { to, phone, message } = req.body || {};
+    const target = to || phone;
+    if (!target || !message || !sock) {
+      return res.status(400).json({ error: 'Datos insuficientes o socket no listo' });
+    }
+
+    const normalized = normalizeE164Plus(target);
+    const stopped = loadStopped();
+
+    if (stopped[normalized]) {
+      console.log(`[blocked-send] ${normalized} está marcado como intervenido`);
+      return res.json({ ok: false, stopped: true });
+    }
+
+    const jid = `${normalized.replace('+', '')}@s.whatsapp.net`;
+    await sock.sendMessage(jid, { text: message });
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.get("/status", (req, res) => {
-    res.json({ connected: !!sock && isAuthenticated, authenticated: isAuthenticated });
+
+app.post('/unstopp', (req, res) => {
+  const { phone } = req.body;
+  const stopped = loadStopped();
+
+  delete stopped[phone];
+  saveStopped(stopped);
+
+  res.json({ ok: true, phone });
 });
 
-app.post("/restart", async (req, res) => {
-    if (sock) try { sock.end(); } catch {}
-    isAuthenticated = false;
-    await startSock();
-    res.json({ message: "Reiniciando..." });
-});
 
 // --- STARTUP ---
 startSock();
