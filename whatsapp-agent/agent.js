@@ -155,20 +155,21 @@ async function startSock() {
 app.post('/send', async (req, res) => {
   try {
     const { to, phone, message } = req.body || {};
-    const target = to || phone;
+    const targetRaw = to || phone;
+    const target = normalizeE164Plus(targetRaw);
     if (!target || !message || !sock) {
       return res.status(400).json({ error: 'Datos insuficientes o socket no listo' });
     }
 
-    const normalized = normalizeE164Plus(target);
     const stopped = loadStopped();
 
-    if (stopped[normalized]) {
-      console.log(`[blocked-send] ${normalized} está marcado como intervenido`);
-      return res.json({ ok: false, stopped: true });
+    if (stopped[target]) {
+    console.log(`[blocked-send] ${target} está marcado como intervenido`);
+    return res.json({ ok: false, stopped: true });
     }
 
-    const jid = `${normalized.replace('+', '')}@s.whatsapp.net`;
+    const jid = `${target.replace('+', '')}@s.whatsapp.net`;
+
     await sock.sendMessage(jid, { text: message });
 
     res.json({ ok: true });
