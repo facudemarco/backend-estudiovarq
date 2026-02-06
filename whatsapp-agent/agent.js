@@ -1,13 +1,14 @@
 global.crypto = require("node:crypto");
 const express = require("express");
-const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require("@whiskeysockets/baileys");
+const {
+  makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason,
+} = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const qrcode = require("qrcode-terminal");
 const fs = require("fs");
 const path = require("path");
-
-// Node 18+ trae fetch. Si estás en 16, instalá node-fetch e importalo.
-// const fetch = require("node-fetch");
 
 const app = express();
 app.use(express.json());
@@ -19,13 +20,14 @@ const AUTH_DIR = "./auth";
 const AUTH_BACKUP_DIR = "./auth_backup";
 
 const N8N_REPLIES_URL =
-  process.env.N8N_REPLIES_URL || "https://n8n.iwebtecnology.com/webhook/estudiovarq-replies";
+  process.env.N8N_REPLIES_URL ||
+  "https://n8n.iwebtecnology.com/webhook/estudiovarq-replies";
 const N8N_REPLIES_SECRET =
-  process.env.N8N_REPLIES_SECRET || "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq";
+  process.env.N8N_REPLIES_SECRET ||
+  "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq";
 
 let sock;
 let reconnectEnabled = true;
-let isAuthenticated = false;
 let lastQRTime = 0;
 const QR_COOLDOWN_MS = 60000;
 
@@ -34,9 +36,7 @@ const STOP_FILE = "./stopped.json";
 
 function ensureStopFile() {
   try {
-    if (!fs.existsSync(STOP_FILE)) {
-      fs.writeFileSync(STOP_FILE, JSON.stringify({}, null, 2));
-    }
+    if (!fs.existsSync(STOP_FILE)) fs.writeFileSync(STOP_FILE, JSON.stringify({}, null, 2));
   } catch (e) {
     console.log("⚠️ No pude crear stopped.json:", e.message);
   }
@@ -82,10 +82,12 @@ function restoreAuth() {
     fs.cpSync(AUTH_BACKUP_DIR, AUTH_DIR, { recursive: true });
   }
 }
+
 function normalizeE164Plus(x) {
   const digits = String(x || "").replace(/[^\d]/g, "");
   return digits ? `+${digits}` : "";
 }
+
 function extractText(msg) {
   const m = msg?.message || {};
   if (m.ephemeralMessage?.message) return extractText({ message: m.ephemeralMessage.message });
@@ -106,14 +108,14 @@ function extractText(msg) {
 
   if (txt && String(txt).trim()) return String(txt).trim();
 
-  // Si no hay texto pero hay media
+  // si hay media sin texto
   if (m.imageMessage || m.videoMessage || m.audioMessage || m.documentMessage || m.stickerMessage) {
     return "[media]";
   }
   return "";
 }
 
-// --- MAIN FUNCTION ---
+// --- MAIN ---
 async function startSock() {
   ensureDirs();
   ensureStopFile();
@@ -150,20 +152,17 @@ async function startSock() {
 
     if (connection === "open") {
       console.log("✅ Sesión activa");
-      isAuthenticated = true;
       backupAuth();
     }
 
     if (connection === "close") {
       const code = lastDisconnect?.error?.output?.statusCode;
-      isAuthenticated = false;
       if (code !== DisconnectReason.loggedOut && reconnectEnabled) {
         setTimeout(() => startSock(), 10000);
       }
     }
   });
 
-  // --- INBOUND LOGIC ---
   sock.ev.on("messages.upsert", async (evt) => {
     try {
       if (evt.type !== "notify") return;
@@ -173,33 +172,29 @@ async function startSock() {
         if (msg.key.remoteJid === "status@broadcast") continue;
 
         const jid = msg.key.remoteJid || "";
-        if (jid.includes("-") && jid.endsWith("@g.us")) continue; // grupos afuera
+        if (jid.includes("-") && jid.endsWith("@g.us")) continue; // grupos no
 
         const phone = normalizeE164Plus(jid.split("@")[0] || "");
         if (!phone) continue;
 
         const text = extractText(msg);
         const rawMessageKeys = Object.keys(msg.message || {});
+        const fromMe = !!msg.key.fromMe;
 
-        // Debug inbound real
-        console.log("[debug-inbound]", {
-          phone,
-          fromMe: !!msg.key.fromMe,
-          rawMessage: rawMessageKeys,
-          text,
-        });
+        console.log("[inbound]", { phone, fromMe, rawMessage: rawMessageKeys, text });
 
-        // ✅ STOP: cualquier mensaje entrante humano corta seguimiento
-        if (!msg.key.fromMe) {
-          const stopped = loadStopped();
-          if (!stopped[phone]) {
-            stopped[phone] = true;
-            saveStopped(stopped);
-            console.log(`[flow-stopped] Cliente ${phone} respondió. Seguimiento cortado.`);
-          }
+        // ✅ SI ES NUESTRO MENSAJE, NO LO REENVIAMOS A N8N (ANTI-LOOP)
+        if (fromMe) continue;
+
+        // ✅ STOP: cualquier mensaje humano (texto o media) corta seguimiento
+        const stopped = loadStopped();
+        if (!stopped[phone]) {
+          stopped[phone] = true;
+          saveStopped(stopped);
+          console.log(`[flow-stopped] Cliente ${phone} respondió. Seguimiento cortado.`);
         }
 
-        // Enviar a n8n (aunque sea media / vacío)
+        // Enviar solo mensajes reales del cliente a n8n
         await fetch(N8N_REPLIES_URL, {
           method: "POST",
           headers: {
@@ -234,7 +229,6 @@ app.post("/send", async (req, res) => {
 
     const jid = `${target.replace("+", "")}@s.whatsapp.net`;
 
-    // ✅ Link preview off (evita link-preview-js error)
     await sock.sendMessage(jid, { text: String(message) }, { disableLinkPreview: true });
 
     return res.json({ ok: true });
@@ -244,10 +238,9 @@ app.post("/send", async (req, res) => {
 });
 
 app.post("/unstopp", (req, res) => {
-  const raw = req.body?.phone;
-  const target = normalizeE164Plus(raw);
-
+  const target = normalizeE164Plus(req.body?.phone);
   const stopped = loadStopped();
+
   delete stopped[target];
   saveStopped(stopped);
 
