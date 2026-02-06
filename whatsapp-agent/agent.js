@@ -21,7 +21,7 @@ const AUTH_BACKUP_DIR = "./auth_backup";
 
 const N8N_REPLIES_URL =
   process.env.N8N_REPLIES_URL ||
-  "https://n8n.iwebtecnology.com/webhook/estudiovarq-replies";
+  "https://n8n.iwebtecnology.com/webhook/estudiovarq-reply";
 const N8N_REPLIES_SECRET =
   process.env.N8N_REPLIES_SECRET ||
   "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq";
