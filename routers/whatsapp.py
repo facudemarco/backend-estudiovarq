@@ -7,14 +7,24 @@ import requests
 router = APIRouter()
 
 # === Config ===
-N8N_REPLIES_URL = "https://n8n.iwebtecnology.com/webhook/estudiovarq-replies"
 REPLIES_SECRET = os.getenv(
     "REPLIES_SECRET",
     "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq",
 )
-WHATSAPP_AGENT_URL = os.getenv(
+
+# OJO: este debe apuntar al AGENT, no a /send
+WHATSAPP_AGENT_BASE_URL = os.getenv(
     "WHATSAPP_AGENT_URL",
-    "http://localhost:3008/send",
+    "http://localhost:3008",  # base
+).rstrip("/")
+
+WHATSAPP_AGENT_SEND_URL = f"{WHATSAPP_AGENT_BASE_URL}/send"
+WHATSAPP_AGENT_UNSTOP_URL = f"{WHATSAPP_AGENT_BASE_URL}/unstopp"  # nueva ruta
+
+# (Opcional) si alguna vez lo reactivás
+N8N_REPLIES_URL = os.getenv(
+    "N8N_REPLIES_URL",
+    "https://n8n.iwebtecnology.com/webhook/estudiovarq-reply",
 )
 
 # === Models ===
@@ -25,6 +35,9 @@ class WhatsAppMsg(BaseModel):
 class MessageRequest(BaseModel):
     phone: str
     message: str
+
+class UnstopRequest(BaseModel):
+    phone: str
 
 # === Endpoints ===
 @router.get("/api/whatsapp-health")
@@ -37,7 +50,6 @@ async def whatsapp_webhook(
     background_tasks: BackgroundTasks,
     x_secret: str | None = Header(default=None),
 ):
-    # Simple auth via header
     if REPLIES_SECRET and x_secret != REPLIES_SECRET:
         print("backend: invalid secret on /api/whatsapp-webhook")
         raise HTTPException(status_code=401, detail="invalid secret")
@@ -47,8 +59,7 @@ async def whatsapp_webhook(
     return {"ok": True}
 
 def handle_whatsapp(phone: str, text: str):
-    # Comentamos la funcionalidad del webhook de replies
-    print(f"backend: mensaje recibido de {phone}: {text}")
+    # Si querés reactivar el forward a n8n, dejalo listo:
     # try:
     #     payload = {"phone": phone, "text": text}
     #     r = requests.post(N8N_REPLIES_URL, json=payload, timeout=10)
@@ -56,21 +67,47 @@ def handle_whatsapp(phone: str, text: str):
     #     r.raise_for_status()
     # except Exception as e:
     #     print(f"Error notificando reply a n8n: {e}")
+    print(f"backend: mensaje recibido de {phone}: {text}")
 
 @router.post("/send")
 def send_message(req: MessageRequest):
     try:
         r = requests.post(
-            WHATSAPP_AGENT_URL,
+            WHATSAPP_AGENT_SEND_URL,
             json={"phone": req.phone, "message": req.message},
             timeout=10,
         )
         r.raise_for_status()
-        # Puede que el agent devuelva texto plano
         try:
             return {"status": "ok", "log": r.json()}
         except Exception:
             return {"status": "ok", "log": r.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-        print(e)
+
+@router.post("/unstopp")
+def unstop_lead(
+    req: UnstopRequest,
+    x_secret: str | None = Header(default=None),
+):
+    """
+    Desbloquea un phone en el agent (borra stopped.json para ese número).
+    Recomendado proteger con el mismo X-Secret.
+    """
+    if REPLIES_SECRET and x_secret != REPLIES_SECRET:
+        print("backend: invalid secret on /unstopp")
+        raise HTTPException(status_code=401, detail="invalid secret")
+
+    try:
+        r = requests.post(
+            WHATSAPP_AGENT_UNSTOP_URL,
+            json={"phone": req.phone},
+            timeout=10,
+        )
+        r.raise_for_status()
+        try:
+            return {"status": "ok", "log": r.json()}
+        except Exception:
+            return {"status": "ok", "log": r.text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
