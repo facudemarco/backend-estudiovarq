@@ -22,6 +22,11 @@ const AUTH_BACKUP_DIR = "./auth_backup";
 const N8N_REPLIES_URL =
   process.env.N8N_REPLIES_URL ||
   "https://n8n.iwebtecnology.com/webhook/estudiovarq-reply";
+
+const N8N_INBOUND_URL =
+  process.env.N8N_INBOUND_URL ||
+  "https://n8n.iwebtecnology.com/webhook/estudiovarq-inbound";
+
 const N8N_REPLIES_SECRET =
   process.env.N8N_REPLIES_SECRET ||
   "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq";
@@ -195,14 +200,26 @@ async function startSock() {
         }
 
         // Enviar solo mensajes reales del cliente a n8n
-        await fetch(N8N_REPLIES_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Secret": N8N_REPLIES_SECRET,
-          },
-          body: JSON.stringify({ phone, text, rawMessage: rawMessageKeys }),
-        }).catch((e) => console.error("Error enviando a N8N:", e?.message || e));
+        const payload = { phone, text, rawMessage: rawMessageKeys };
+
+        await Promise.allSettled([
+          fetch(N8N_REPLIES_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Secret": N8N_REPLIES_SECRET,
+            },
+            body: JSON.stringify(payload),
+          }),
+          fetch(N8N_INBOUND_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Secret": N8N_REPLIES_SECRET,
+            },
+            body: JSON.stringify(payload),
+          }),
+        ]).catch(() => {});
       }
     } catch (e) {
       console.error("messages.upsert error:", e?.message || e);
@@ -213,7 +230,7 @@ async function startSock() {
 // --- ENDPOINTS ---
 app.post("/send", async (req, res) => {
   try {
-    const { to, phone, message } = req.body || {};
+    const { to, phone, message, force } = req.body || {};
     const targetRaw = to || phone;
     const target = normalizeE164Plus(targetRaw);
 
@@ -222,13 +239,12 @@ app.post("/send", async (req, res) => {
     }
 
     const stopped = loadStopped();
-    if (stopped[target]) {
+    if (stopped[target] && !force) {
       console.log(`[blocked-send] ${target} está marcado como intervenido`);
       return res.json({ ok: false, stopped: true });
     }
 
     const jid = `${target.replace("+", "")}@s.whatsapp.net`;
-
     await sock.sendMessage(jid, { text: String(message) }, { disableLinkPreview: true });
 
     return res.json({ ok: true });
@@ -245,6 +261,14 @@ app.post("/unstopp", (req, res) => {
   saveStopped(stopped);
 
   res.json({ ok: true, phone: target });
+});
+
+app.post("/status", (req, res) => {
+  const target = normalizeE164Plus(req.body?.phone);
+  if (!target) return res.status(400).json({ ok: false, error: "phone required" });
+
+  const stopped = loadStopped();
+  return res.json({ ok: true, phone: target, stopped: !!stopped[target] });
 });
 
 // --- STARTUP ---
