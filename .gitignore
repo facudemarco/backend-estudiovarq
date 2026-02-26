@@ -6,3 +6,6 @@ venv/
 
 #Python cache files
 __pycache__
+
+# WhatsApp Agent
+whatsapp-agent/node_modules/

@@ -13,7 +13,20 @@ const path = require("path");
 const app = express();
 app.use(express.json());
 
-const logger = pino({ level: "info" });
+const logger = pino({
+  level: "info",
+  transport: {
+    target: "pino-pretty",
+    options: {
+      colorize: true,
+      translateTime: "SYS:standard",
+      ignore: "pid,hostname",
+    },
+  },
+});
+
+// Logger silencioso para Baileys para evitar spam en la terminal
+const baileysLogger = pino({ level: "silent" });
 
 // --- CONFIG ---
 const AUTH_DIR = "./auth";
@@ -33,6 +46,8 @@ const N8N_REPLIES_SECRET =
 
 let sock;
 let reconnectEnabled = true;
+let isReconnecting = false;
+let isConnected = false;
 let lastQRTime = 0;
 const QR_COOLDOWN_MS = 60000;
 
@@ -130,7 +145,7 @@ async function startSock() {
 
   sock = makeWASocket({
     auth: state,
-    logger,
+    logger: baileysLogger,
     browser: ["iWeb Agent", "Chrome", "1.0.0"],
     printQRInTerminal: false,
     syncFullHistory: false,
@@ -156,14 +171,34 @@ async function startSock() {
     }
 
     if (connection === "open") {
-      console.log("✅ Sesión activa");
+      logger.info("✅ Sesión de WhatsApp activa");
+      isConnected = true;
+      isReconnecting = false;
       backupAuth();
     }
 
     if (connection === "close") {
+      isConnected = false;
       const code = lastDisconnect?.error?.output?.statusCode;
-      if (code !== DisconnectReason.loggedOut && reconnectEnabled) {
-        setTimeout(() => startSock(), 10000);
+      const reason = lastDisconnect?.error?.message;
+      
+      logger.warn({ code, reason }, "⚠️ Conexión de WhatsApp cerrada");
+
+      if (code === DisconnectReason.loggedOut) {
+        logger.error("🛑 Sesión cerrada (logged out). Borrando credenciales para escanear nuevo QR...");
+        try { fs.rmSync(AUTH_DIR, { recursive: true, force: true }); } catch (e) {}
+        try { fs.rmSync(AUTH_BACKUP_DIR, { recursive: true, force: true }); } catch (e) {}
+        
+        if (reconnectEnabled) {
+          isReconnecting = false;
+          startSock();
+        }
+      } else if (reconnectEnabled && !isReconnecting) {
+        isReconnecting = true;
+        logger.info("⏳ Intentando reconectar en 5 segundos...");
+        setTimeout(() => {
+          startSock();
+        }, 5000);
       }
     }
   });
@@ -186,7 +221,7 @@ async function startSock() {
         const rawMessageKeys = Object.keys(msg.message || {});
         const fromMe = !!msg.key.fromMe;
 
-        console.log("[inbound]", { phone, fromMe, rawMessage: rawMessageKeys, text });
+        logger.info({ phone, fromMe, text }, "📥 Mensaje entrante");
 
         // ✅ SI ES NUESTRO MENSAJE, NO LO REENVIAMOS A N8N (ANTI-LOOP)
         if (fromMe) continue;
@@ -196,7 +231,7 @@ async function startSock() {
         if (!stopped[phone]) {
           stopped[phone] = true;
           saveStopped(stopped);
-          console.log(`[flow-stopped] Cliente ${phone} respondió. Seguimiento cortado.`);
+          logger.info(`🚫 [flow-stopped] Cliente ${phone} respondió. Seguimiento automático cortado.`);
         }
 
         // Enviar solo mensajes reales del cliente a n8n
@@ -234,22 +269,29 @@ app.post("/send", async (req, res) => {
     const targetRaw = to || phone;
     const target = normalizeE164Plus(targetRaw);
 
-    if (!target || !message || !sock) {
-      return res.status(400).json({ error: "Datos insuficientes o socket no listo" });
+    if (!target || !message) {
+      return res.status(400).json({ error: "Datos de envío insuficientes" });
+    }
+
+    if (!sock || !isConnected) {
+      logger.error("Intento de envío fallido: Socket no listo o desconectado");
+      return res.status(503).json({ error: "El agente de WhatsApp no está conectado en este momento. Inténtelo más tarde." });
     }
 
     const stopped = loadStopped();
     if (stopped[target] && !force) {
-      console.log(`[blocked-send] ${target} está marcado como intervenido`);
+      logger.info(`[blocked-send] ${target} está marcado como intervenido de forma manual`);
       return res.json({ ok: false, stopped: true });
     }
 
     const jid = `${target.replace("+", "")}@s.whatsapp.net`;
     await sock.sendMessage(jid, { text: String(message) }, { disableLinkPreview: true });
 
+    logger.info(`✅ Mensaje enviado a ${target}`);
     return res.json({ ok: true });
   } catch (err) {
-    return res.status(500).json({ error: err?.message || String(err) });
+    logger.error({ err: err?.message || String(err) }, "❌ Error al enviar mensaje desde endpoint /send");
+    return res.status(500).json({ error: "Error interno al enviar el mensaje" });
   }
 });
 
