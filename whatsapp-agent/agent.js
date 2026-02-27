@@ -4,6 +4,7 @@ const {
   makeWASocket,
   useMultiFileAuthState,
   DisconnectReason,
+  fetchLatestBaileysVersion,
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const qrcode = require("qrcode-terminal");
@@ -230,32 +231,27 @@ async function startSock() {
 
   logger.info(`🚀 Iniciando socket... (auth existente: ${hasAuth()})`);
 
-  // 🛡️ Obtener versión actual de WhatsApp Web para evitar 405
-  let waVersion;
+  // 🛡️ Obtener versión del protocolo de Baileys
+  let version;
   try {
-    const res = await fetch("https://web.whatsapp.com/check-update?version=0&platform=web");
-    const data = await res.json();
-    if (data.currentVersion) {
-      waVersion = data.currentVersion.split(".").map(Number);
-      logger.info(`📡 Versión WA Web obtenida: ${data.currentVersion}`);
-    }
+    const result = await fetchLatestBaileysVersion();
+    version = result.version;
+    logger.info(`📡 Versión Baileys obtenida: ${version.join(".")}`);  
   } catch (e) {
-    logger.warn(`⚠️ No se pudo obtener versión WA Web: ${e.message}`);
+    logger.warn(`⚠️ No se pudo obtener versión de Baileys: ${e.message}`);
   }
 
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
-  const socketConfig = {
+  sock = makeWASocket({
     auth: state,
+    version,
     logger: baileysLogger,
     browser: ["Ubuntu", "Chrome", "20.0.04"],
     printQRInTerminal: false,
     syncFullHistory: false,
     keepAliveIntervalMs: 30000,
-  };
-  if (waVersion) socketConfig.version = waVersion;
-
-  sock = makeWASocket(socketConfig);
+  });
 
   sock.ev.on("creds.update", (creds) => {
     saveCreds(creds);
