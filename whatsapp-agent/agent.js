@@ -27,6 +27,10 @@ const baileysLogger = pino({ level: "silent" });
 // --- CONFIG ---
 const AUTH_DIR = "./auth";
 const AUTH_BACKUP_DIR = "./auth_backup";
+// 🛡️ Backups versionados en ruta EXTERNA persistente (fuera del proyecto)
+const AUTH_BACKUPS_DIR = process.env.AUTH_BACKUPS_DIR || "/data/wa_backups";
+const MAX_VERSIONED_BACKUPS = 5;
+const BACKUP_INTERVAL_MS = 5 * 60 * 1000; // Backup periódico cada 5 min
 
 const N8N_REPLIES_URL =
   process.env.N8N_REPLIES_URL ||
@@ -45,6 +49,8 @@ let reconnectEnabled = true;
 let isReconnecting = false;
 let isConnected = false;
 let reconnectAttempts = 0;
+let backupTimer = null;
+const startTime = Date.now();
 
 // --- STOP FILE ---
 const STOP_FILE = "./stopped.json";
@@ -80,6 +86,9 @@ function saveStopped(data) {
 function ensureDirs() {
   if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
   if (!fs.existsSync(AUTH_BACKUP_DIR)) fs.mkdirSync(AUTH_BACKUP_DIR, { recursive: true });
+  try { if (!fs.existsSync(AUTH_BACKUPS_DIR)) fs.mkdirSync(AUTH_BACKUPS_DIR, { recursive: true }); } catch (e) {
+    logger.warn(`⚠️ No se pudo crear carpeta de backups externos (${AUTH_BACKUPS_DIR}): ${e.message}`);
+  }
 }
 function hasAuth() {
   return fs.existsSync(path.join(AUTH_DIR, "creds.json"));
@@ -91,14 +100,60 @@ function backupAuth() {
     logger.warn("⚠️ Backup falló:", e.message);
   }
 }
-function restoreAuth() {
-  if (!hasAuth() && fs.existsSync(path.join(AUTH_BACKUP_DIR, "creds.json"))) {
-    logger.info("♻️ Restaurando sesión desde backup...");
-    fs.cpSync(AUTH_BACKUP_DIR, AUTH_DIR, { recursive: true });
+
+// 🛡️ Backup versionado con timestamp en ruta persistente externa
+function versionedBackup() {
+  try {
+    if (!hasAuth()) return;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const destDir = path.join(AUTH_BACKUPS_DIR, `backup_${timestamp}`);
+    fs.mkdirSync(destDir, { recursive: true });
+    fs.cpSync(AUTH_DIR, destDir, { recursive: true });
+    logger.info(`📦 Backup versionado: backup_${timestamp}`);
+
+    // Mantener solo los últimos MAX_VERSIONED_BACKUPS
+    const backups = fs.readdirSync(AUTH_BACKUPS_DIR)
+      .filter(d => d.startsWith("backup_")).sort().reverse();
+    for (let i = MAX_VERSIONED_BACKUPS; i < backups.length; i++) {
+      fs.rmSync(path.join(AUTH_BACKUPS_DIR, backups[i]), { recursive: true, force: true });
+    }
+  } catch (e) {
+    logger.warn(`⚠️ Backup versionado falló: ${e.message}`);
   }
 }
+
+function restoreAuth() {
+  if (hasAuth()) return;
+
+  // Capa 1: backup simple local
+  if (fs.existsSync(path.join(AUTH_BACKUP_DIR, "creds.json"))) {
+    logger.info("♻️ Restaurando sesión desde auth_backup...");
+    fs.cpSync(AUTH_BACKUP_DIR, AUTH_DIR, { recursive: true });
+    return;
+  }
+
+  // Capa 2: backups versionados externos (más reciente primero)
+  try {
+    if (!fs.existsSync(AUTH_BACKUPS_DIR)) return;
+    const backups = fs.readdirSync(AUTH_BACKUPS_DIR)
+      .filter(d => d.startsWith("backup_")).sort().reverse();
+    for (const backup of backups) {
+      const credsPath = path.join(AUTH_BACKUPS_DIR, backup, "creds.json");
+      if (fs.existsSync(credsPath)) {
+        logger.info(`♻️ Restaurando sesión desde backup externo: ${backup}`);
+        fs.cpSync(path.join(AUTH_BACKUPS_DIR, backup), AUTH_DIR, { recursive: true });
+        return;
+      }
+    }
+  } catch (e) {
+    logger.warn(`⚠️ Error buscando backups externos: ${e.message}`);
+  }
+
+  logger.warn("⚠️ No se encontró ningún backup válido.");
+}
+
 function clearAuth() {
-  logger.warn("🗑️ Limpiando credenciales...");
+  logger.warn("🗑️ Limpiando credenciales locales...");
   try {
     const files1 = fs.readdirSync(AUTH_DIR);
     for (const f of files1) fs.unlinkSync(path.join(AUTH_DIR, f));
@@ -107,6 +162,19 @@ function clearAuth() {
     const files2 = fs.readdirSync(AUTH_BACKUP_DIR);
     for (const f of files2) fs.unlinkSync(path.join(AUTH_BACKUP_DIR, f));
   } catch (e) {}
+  // ⚠️ NO borramos los backups versionados externos — son la última línea de defensa
+}
+
+// 🔄 Backup periódico automático
+function startPeriodicBackup() {
+  if (backupTimer) clearInterval(backupTimer);
+  backupTimer = setInterval(() => {
+    if (isConnected && hasAuth()) {
+      backupAuth();
+      versionedBackup();
+      logger.info("🔄 Backup periódico completado.");
+    }
+  }, BACKUP_INTERVAL_MS);
 }
 
 function normalizeE164Plus(x) {
@@ -170,6 +238,7 @@ async function startSock() {
     browser: ["iWeb Agent", "Chrome", "1.0.0"],
     printQRInTerminal: false,
     syncFullHistory: false,
+    keepAliveIntervalMs: 30000, // 🛡️ Ping cada 30s para mantener conexión viva
   });
 
   sock.ev.on("creds.update", (creds) => {
@@ -194,6 +263,8 @@ async function startSock() {
       isReconnecting = false;
       reconnectAttempts = 0;
       backupAuth();
+      versionedBackup();
+      startPeriodicBackup();
     }
 
     if (connection === "close") {
@@ -351,6 +422,34 @@ app.post("/status", (req, res) => {
   const stopped = loadStopped();
   return res.json({ ok: true, phone: target, stopped: !!stopped[target] });
 });
+
+// 🛡️ Endpoint /health para monitoreo
+app.get("/health", (req, res) => {
+  const uptimeMin = Math.floor((Date.now() - startTime) / 60000);
+  let vBackups = [];
+  try { vBackups = fs.readdirSync(AUTH_BACKUPS_DIR).filter(d => d.startsWith("backup_")).sort().reverse(); } catch (e) {}
+  return res.json({
+    ok: true,
+    connected: isConnected,
+    hasAuth: hasAuth(),
+    uptime: `${uptimeMin} minutos`,
+    reconnectAttempts,
+    backups: { simple: fs.existsSync(path.join(AUTH_BACKUP_DIR, "creds.json")), versioned: vBackups.length, latest: vBackups[0] || null },
+  });
+});
+
+// 🛡️ Graceful Shutdown
+async function gracefulShutdown(signal) {
+  logger.info(`🛑 ${signal} recibido. Cerrando agente de forma segura...`);
+  reconnectEnabled = false;
+  if (isConnected && hasAuth()) { backupAuth(); versionedBackup(); }
+  if (sock) { try { sock.ev.removeAllListeners(); sock.ws.close(); } catch (e) {} }
+  if (backupTimer) clearInterval(backupTimer);
+  logger.info("👋 Agente cerrado correctamente.");
+  process.exit(0);
+}
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 // --- STARTUP ---
 startSock();

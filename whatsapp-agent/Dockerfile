@@ -15,8 +15,11 @@ RUN npm init -y && \
 COPY agent.js ./
 
 # carpetas para sesiones
-RUN mkdir -p /app/auth /app/auth_backup
+RUN mkdir -p /app/auth /app/auth_backup /data/wa_backups
 
 EXPOSE 3008
+
+# 🛡️ Graceful shutdown: Docker enviará SIGTERM al parar
+STOPSIGNAL SIGTERM
 
 CMD ["node", "agent.js"]
