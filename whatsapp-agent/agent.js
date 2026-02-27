@@ -230,16 +230,32 @@ async function startSock() {
 
   logger.info(`🚀 Iniciando socket... (auth existente: ${hasAuth()})`);
 
+  // 🛡️ Obtener versión actual de WhatsApp Web para evitar 405
+  let waVersion;
+  try {
+    const res = await fetch("https://web.whatsapp.com/check-update?version=0&platform=web");
+    const data = await res.json();
+    if (data.currentVersion) {
+      waVersion = data.currentVersion.split(".").map(Number);
+      logger.info(`📡 Versión WA Web obtenida: ${data.currentVersion}`);
+    }
+  } catch (e) {
+    logger.warn(`⚠️ No se pudo obtener versión WA Web: ${e.message}`);
+  }
+
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
-  sock = makeWASocket({
+  const socketConfig = {
     auth: state,
     logger: baileysLogger,
-    browser: ["iWeb Agent", "Chrome", "1.0.0"],
+    browser: ["Ubuntu", "Chrome", "20.0.04"],
     printQRInTerminal: false,
     syncFullHistory: false,
-    keepAliveIntervalMs: 30000, // 🛡️ Ping cada 30s para mantener conexión viva
-  });
+    keepAliveIntervalMs: 30000,
+  };
+  if (waVersion) socketConfig.version = waVersion;
+
+  sock = makeWASocket(socketConfig);
 
   sock.ev.on("creds.update", (creds) => {
     saveCreds(creds);
