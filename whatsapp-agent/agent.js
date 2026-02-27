@@ -211,14 +211,24 @@ async function startSock() {
       );
 
       if (needsNewAuth) {
-        logger.error(`🛑 Sesión inválida (código ${code}). Borrando credenciales para escanear nuevo QR...`);
-        clearAuth();
-        reconnectAttempts = 0;
-        isReconnecting = false;
-        
-        if (reconnectEnabled) {
-          logger.info("⏳ Reiniciando en 3s para mostrar QR nuevo...");
-          setTimeout(() => startSock(), 3000);
+        // Si auth ya está vacía, no re-borrar, solo reintentar con backoff más largo
+        if (!hasAuth()) {
+          reconnectAttempts++;
+          const delay = Math.min(30000 * Math.pow(2, reconnectAttempts - 1), 300000);
+          logger.warn(`⏳ Auth ya vacía pero sigue el error ${code}. WhatsApp puede estar limitando. Reintentando en ${delay / 1000}s (intento #${reconnectAttempts})...`);
+          isReconnecting = false;
+          if (reconnectEnabled) {
+            setTimeout(() => startSock(), delay);
+          }
+        } else {
+          logger.error(`🛑 Sesión inválida (código ${code}). Borrando credenciales para escanear nuevo QR...`);
+          clearAuth();
+          reconnectAttempts = 0;
+          isReconnecting = false;
+          if (reconnectEnabled) {
+            logger.info("⏳ Reiniciando en 5s para mostrar QR nuevo...");
+            setTimeout(() => startSock(), 5000);
+          }
         }
       } else if (reconnectEnabled && !isReconnecting) {
         isReconnecting = true;
