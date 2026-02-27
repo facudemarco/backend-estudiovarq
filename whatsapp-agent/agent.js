@@ -44,8 +44,7 @@ let sock;
 let reconnectEnabled = true;
 let isReconnecting = false;
 let isConnected = false;
-let lastQRTime = 0;
-const QR_COOLDOWN_MS = 60000;
+let reconnectAttempts = 0;
 
 // --- STOP FILE ---
 const STOP_FILE = "./stopped.json";
@@ -54,7 +53,7 @@ function ensureStopFile() {
   try {
     if (!fs.existsSync(STOP_FILE)) fs.writeFileSync(STOP_FILE, JSON.stringify({}, null, 2));
   } catch (e) {
-    console.log("⚠️ No pude crear stopped.json:", e.message);
+    logger.warn("⚠️ No pude crear stopped.json:", e.message);
   }
 }
 
@@ -73,7 +72,7 @@ function saveStopped(data) {
   try {
     fs.writeFileSync(STOP_FILE, JSON.stringify(data || {}, null, 2));
   } catch (e) {
-    console.log("⚠️ No pude guardar stopped.json:", e.message);
+    logger.warn("⚠️ No pude guardar stopped.json:", e.message);
   }
 }
 
@@ -89,14 +88,25 @@ function backupAuth() {
   try {
     if (hasAuth()) fs.cpSync(AUTH_DIR, AUTH_BACKUP_DIR, { recursive: true });
   } catch (e) {
-    console.log("⚠️ Backup falló:", e.message);
+    logger.warn("⚠️ Backup falló:", e.message);
   }
 }
 function restoreAuth() {
   if (!hasAuth() && fs.existsSync(path.join(AUTH_BACKUP_DIR, "creds.json"))) {
-    console.log("♻️ Restaurando sesión desde backup...");
+    logger.info("♻️ Restaurando sesión desde backup...");
     fs.cpSync(AUTH_BACKUP_DIR, AUTH_DIR, { recursive: true });
   }
+}
+function clearAuth() {
+  logger.warn("🗑️ Limpiando credenciales...");
+  try {
+    const files1 = fs.readdirSync(AUTH_DIR);
+    for (const f of files1) fs.unlinkSync(path.join(AUTH_DIR, f));
+  } catch (e) {}
+  try {
+    const files2 = fs.readdirSync(AUTH_BACKUP_DIR);
+    for (const f of files2) fs.unlinkSync(path.join(AUTH_BACKUP_DIR, f));
+  } catch (e) {}
 }
 
 function normalizeE164Plus(x) {
@@ -133,9 +143,24 @@ function extractText(msg) {
 
 // --- MAIN ---
 async function startSock() {
+  // ⚠️ Cerrar socket anterior si existe para evitar zombies
+  if (sock) {
+    logger.info("🔄 Cerrando socket anterior antes de reconectar...");
+    try {
+      sock.ev.removeAllListeners();
+      sock.ws.close();
+    } catch (e) {
+      // ignorar errores al cerrar socket viejo
+    }
+    sock = null;
+  }
+
+  isReconnecting = false;
   ensureDirs();
   ensureStopFile();
   restoreAuth();
+
+  logger.info(`🚀 Iniciando socket... (auth existente: ${hasAuth()})`);
 
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
@@ -155,21 +180,19 @@ async function startSock() {
   sock.ev.on("connection.update", (update) => {
     const { connection, lastDisconnect, qr } = update;
 
+    // 🟢 Mostrar QR SIEMPRE que Baileys lo genere (sin cooldown)
     if (qr) {
-      const now = Date.now();
-      if (now - lastQRTime > QR_COOLDOWN_MS) {
-        console.log("\n================================================");
-        console.log("🟢 Escaneá este QR con WhatsApp (Estudio VARQ):");
-        qrcode.generate(qr, { small: true });
-        console.log("================================================");
-        lastQRTime = now;
-      }
+      console.log("\n================================================");
+      console.log("🟢 Escaneá este QR con WhatsApp (Estudio VARQ):");
+      qrcode.generate(qr, { small: true });
+      console.log("================================================");
     }
 
     if (connection === "open") {
       logger.info("✅ Sesión de WhatsApp activa");
       isConnected = true;
       isReconnecting = false;
+      reconnectAttempts = 0;
       backupAuth();
     }
 
@@ -180,21 +203,31 @@ async function startSock() {
       
       logger.warn({ code, reason }, "⚠️ Conexión de WhatsApp cerrada");
 
-      if (code === DisconnectReason.loggedOut) {
-        logger.error("🛑 Sesión cerrada (logged out). Borrando credenciales para escanear nuevo QR...");
-        try { fs.rmSync(AUTH_DIR, { recursive: true, force: true }); } catch (e) {}
-        try { fs.rmSync(AUTH_BACKUP_DIR, { recursive: true, force: true }); } catch (e) {}
+      // Códigos que requieren borrar credenciales y escanear QR nuevo
+      const needsNewAuth = (
+        code === DisconnectReason.loggedOut ||
+        code === 405 ||
+        code === 401
+      );
+
+      if (needsNewAuth) {
+        logger.error(`🛑 Sesión inválida (código ${code}). Borrando credenciales para escanear nuevo QR...`);
+        clearAuth();
+        reconnectAttempts = 0;
+        isReconnecting = false;
         
         if (reconnectEnabled) {
-          isReconnecting = false;
-          startSock();
+          logger.info("⏳ Reiniciando en 3s para mostrar QR nuevo...");
+          setTimeout(() => startSock(), 3000);
         }
       } else if (reconnectEnabled && !isReconnecting) {
         isReconnecting = true;
-        logger.info("⏳ Intentando reconectar en 5 segundos...");
+        reconnectAttempts++;
+        const delay = Math.min(5000 * Math.pow(2, reconnectAttempts - 1), 60000);
+        logger.info(`⏳ Intentando reconectar en ${delay / 1000}s (intento #${reconnectAttempts})...`);
         setTimeout(() => {
           startSock();
-        }, 5000);
+        }, delay);
       }
     }
   });
@@ -253,7 +286,7 @@ async function startSock() {
         ]).catch(() => {});
       }
     } catch (e) {
-      console.error("messages.upsert error:", e?.message || e);
+      logger.error("messages.upsert error:", e?.message || e);
     }
   });
 }
