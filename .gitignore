@@ -9,3 +9,13 @@ __pycache__
 
 # WhatsApp Agent
 whatsapp-agent/node_modules/
+whatsapp-agent/auth/
+whatsapp-agent/auth_backup/
+whatsapp-agent/stopped.json
+
+# Secrets locales
+google-sheets-service.json
+
+# Deploy local
+scripts/.tunnel*
+scripts/bin/

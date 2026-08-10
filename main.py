@@ -6,7 +6,11 @@ from routers.house import router as routerHouses
 from routers.contact import router as routerContact
 from routers.wizardForm import router as routerWizardForm
 from routers.whatsapp import router as routerWhatsapp
+from routers.crm import router as routerCrm
+from routers.auth import router as routerAuth, get_current_user
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 app = FastAPI()
 
@@ -26,6 +30,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+BOT_PATHS = {"/crm/inbox", "/crm/events", "/crm/upsert-lead", "/crm/update-lead",
+             "/crm/lead", "/crm/leads-pending", "/crm/parse-agendar"}
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        path = request.url.path
+        if path.startswith("/crm/"):
+            if path in BOT_PATHS:
+                return await call_next(request)
+            session = request.cookies.get("session")
+            if not get_current_user(session):
+                return JSONResponse(status_code=401, content={"detail": "no autenticado"})
+        if path == "/auth/me":
+            session = request.cookies.get("session")
+            if not get_current_user(session):
+                return JSONResponse(status_code=401, content={"detail": "no autenticado"})
+        return await call_next(request)
+
+
+app.add_middleware(AuthMiddleware)
+
 
 @app.get('/')
 def read_root():
@@ -39,3 +67,5 @@ app.include_router(routerHouses)
 app.include_router(routerContact)
 app.include_router(routerWizardForm)
 app.include_router(routerWhatsapp)
+app.include_router(routerCrm)
+app.include_router(routerAuth)

@@ -10,3 +10,6 @@ aiosmtplib
 python-jose
 pydantic[email]
 requests
+google-api-python-client
+google-auth
+bcrypt

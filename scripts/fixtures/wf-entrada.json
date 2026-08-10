@@ -1,0 +1,4779 @@
+{
+ "updatedAt": "2026-08-05T13:21:29.615Z",
+ "createdAt": "2026-08-03T14:13:37.454Z",
+ "id": "h1kQ7hg0aWjYXl4v",
+ "name": "EstudioVARq WorkTesting",
+ "description": null,
+ "active": true,
+ "isArchived": false,
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "estudiovarq-entrada-testing",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000001",
+   "name": "Webhook entrada",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2.1,
+   "position": [
+    -400,
+    300
+   ],
+   "webhookId": "estudiovarq-entrada-testing"
+  },
+  {
+   "parameters": {
+    "language": "javaScript",
+    "mode": "runOnceForAllItems",
+    "jsCode": "const rawBody = $json.body !== undefined ? (typeof $json.body === \"string\" ? safeParse($json.body) : $json.body) : $json;\nfunction safeParse(s) { try { const o = JSON.parse(s); return (o && typeof o === \"object\") ? o : {}; } catch (e) { return {}; } }\nconst b = rawBody;\n\nfunction normalizePhone(raw) {\n  if (!raw) return \"\";\n  let s = String(raw).replace(/[^\\d+]/g, \"\");\n  if (s.startsWith(\"+\")) return s;\n  return \"+\" + s;\n}\n\nconst phone = normalizePhone(b.phone);\nconst leadId = b.lead_id || ($now.toMillis() + \"-\" + Math.random().toString(36).slice(2, 8));\n\nconst lead = {\n  lead_id: leadId,\n  phone: phone,\n  name: (b.name || \"\").toString().trim(),\n  lastName: (b.lastName || \"\").toString().trim(),\n  email: (b.email || \"\").toString().trim(),\n  totalsM2: Number(b.totalsM2) || 0,\n  address: b.address || \"\",\n  anotherPlace: b.anotherPlace || \"\",\n  bathroom: b.bathroom || \"\",\n  diningRoom: b.diningRoom || \"\",\n  kitchen: b.kitchen || \"\",\n  livingRoom: b.livingRoom || \"\",\n  garage: b.garage || \"\",\n  mainBedroom: b.mainBedroom || \"\",\n  secondBedroom: b.secondBedroom || \"\",\n  plants: b.plants || \"\",\n  startDate: b.startDate || \"\",\n  zone: b.zone || \"\",\n  comments: b.comments || \"\",\n  source: b.source || \"wizardForm\",\n  status: \"nuevo\",\n  question_index: 0,\n  cualificado: \"\",\n  razon_no_cual: \"\",\n  etapa_seg: \"\",\n  prox_seg_ts: \"\",\n  ultimo_msg_ts: \"\",\n  calendar_event_id: \"\",\n  notas: \"\"\n};\n\nconst now = $now.setZone(\"America/Argentina/Buenos_Aires\");\nconst weekday = now.weekday;\nconst hour = now.hour;\nconst laboral = (weekday >= 1 && weekday <= 5) && (hour >= 8 && hour < 18);\n\nreturn [{ json: { lead, laboral, hour, weekday } }];"
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000002",
+   "name": "Normalizar lead",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -180,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict"
+     },
+     "conditions": [
+      {
+       "id": "cond-laboral",
+       "leftValue": "={{ $json.laboral }}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000003",
+   "name": "IF horario laboral",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.3,
+   "position": [
+    40,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "mode": "manual",
+    "includeOtherFields": false,
+    "assignments": {
+     "assignments": [
+      {
+       "id": "msg-m1",
+       "name": "m1",
+       "value": "={{ 'Hola ' + $json.lead.name + '! 👋👋\\n\\nComo estás? Soy Sofía, del equipo de Estudio VArq - Arquitectura.\\n\\nMe alegra que estés con el proyecto de tu casa! Felicitaciones! ❤️\\n\\nEn base a las respuestas que diste en nuestro formulario, hice los cálculos y *los metros cuadrados totales de tu casa ideal son ' + $json.lead.totalsM2 + ' m2*.' }}",
+       "type": "string"
+      },
+      {
+       "id": "msg-m2",
+       "name": "m2",
+       "value": "={{ 'El próximo paso es: Ver tu casa terminada antes de construirla y saber cuánto saldría hacerla 🏡\\n\\nTe interesa?' }}",
+       "type": "string"
+      },
+      {
+       "id": "phone-laboral",
+       "name": "phone",
+       "value": "={{ $json.lead.phone }}",
+       "type": "string"
+      },
+      {
+       "id": "lead-laboral",
+       "name": "lead",
+       "value": "={{ $json.lead }}",
+       "type": "object"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000005",
+   "name": "Armar msg m1+m2",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    260,
+    160
+   ],
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "mode": "manual",
+    "includeOtherFields": false,
+    "assignments": {
+     "assignments": [
+      {
+       "id": "msg-nolaboral",
+       "name": "message",
+       "value": "={{ 'Hola ' + $json.lead.name + '!\\nRecibimos los datos que enviaste en nuestro formulario web.\\nNuestro horario de atención es de lunes a viernes de 08 a 18hs. Nos vamos a poner en contacto con vos y darte los resultados en m2 de tu proyecto en esos horarios!' }}",
+       "type": "string"
+      },
+      {
+       "id": "phone-nolaboral",
+       "name": "phone",
+       "value": "={{ $json.lead.phone }}",
+       "type": "string"
+      },
+      {
+       "id": "lead-nolaboral",
+       "name": "lead",
+       "value": "={{ $json.lead }}",
+       "type": "object"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000004",
+   "name": "Armar msg no laboral",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    260,
+    460
+   ],
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "resource": "sheet",
+    "operation": "appendOrUpdate",
+    "documentId": {
+     "mode": "id",
+     "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+    },
+    "sheetName": {
+     "mode": "name",
+     "value": "Leads"
+    },
+    "range": "A:AG",
+    "options": {},
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "lead_id": "={{ $json.lead.lead_id }}",
+      "phone": "={{ $json.lead.phone }}",
+      "name": "={{ $json.lead.name }}",
+      "lastName": "={{ $json.lead.lastName }}",
+      "email": "={{ $json.lead.email }}",
+      "totalsM2": "={{ $json.lead.totalsM2 }}",
+      "address": "={{ $json.lead.address }}",
+      "anotherPlace": "={{ $json.lead.anotherPlace }}",
+      "bathroom": "={{ $json.lead.bathroom }}",
+      "diningRoom": "={{ $json.lead.diningRoom }}",
+      "kitchen": "={{ $json.lead.kitchen }}",
+      "livingRoom": "={{ $json.lead.livingRoom }}",
+      "garage": "={{ $json.lead.garage }}",
+      "mainBedroom": "={{ $json.lead.mainBedroom }}",
+      "secondBedroom": "={{ $json.lead.secondBedroom }}",
+      "plants": "={{ $json.lead.plants }}",
+      "startDate": "={{ $json.lead.startDate }}",
+      "zone": "={{ $json.lead.zone }}",
+      "comments": "={{ $json.lead.comments }}",
+      "source": "={{ $json.lead.source }}",
+      "status": "={{ $json.lead.status }}",
+      "question_index": "={{ $json.lead.question_index }}",
+      "cualificado": "={{ $json.lead.cualificado }}",
+      "razon_no_cual": "={{ $json.lead.razon_no_cual }}",
+      "etapa_seg": "={{ $json.lead.etapa_seg }}",
+      "prox_seg_ts": "={{ $json.lead.prox_seg_ts }}",
+      "ultimo_msg_ts": "={{ $json.lead.ultimo_msg_ts }}",
+      "calendar_event_id": "={{ $json.lead.calendar_event_id }}",
+      "notas": "={{ $json.lead.notas }}",
+      "q1": "={{ $json.lead.q1 }}",
+      "q2": "={{ $json.lead.q2 }}",
+      "q3": "={{ $json.lead.q3 }}",
+      "q4": "={{ $json.lead.q4 }}",
+      "q5": "={{ $json.lead.q5 }}",
+      "q6": "={{ $json.lead.q6 }}",
+      "q7": "={{ $json.lead.q7 }}",
+      "q8": "={{ $json.lead.q8 }}",
+      "q9": "={{ $json.lead.q9 }}"
+     },
+     "matchingColumns": [
+      "lead_id"
+     ],
+     "schema": [
+      {
+       "id": "lead_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lead_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "phone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "phone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "name",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "name",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "lastName",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lastName",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "email",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "email",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "totalsM2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "totalsM2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "address",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "address",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "anotherPlace",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "anotherPlace",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "bathroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "bathroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "diningRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "diningRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "kitchen",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "kitchen",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "livingRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "livingRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "garage",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "garage",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "mainBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "mainBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "secondBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "secondBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "plants",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "plants",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "startDate",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "startDate",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "zone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "zone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "comments",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "comments",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "source",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "source",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "status",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "status",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "question_index",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "question_index",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "cualificado",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cualificado",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "razon_no_cual",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "razon_no_cual",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "etapa_seg",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "etapa_seg",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "prox_seg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "prox_seg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "ultimo_msg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "ultimo_msg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "calendar_event_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "calendar_event_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "notas",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "notas",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q1",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q1",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q3",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q3",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q4",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q4",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q5",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q5",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q6",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q6",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q7",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q7",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q8",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q8",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q9",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q9",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ]
+    }
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000006a",
+   "name": "Upsert lead (laboral)",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.7,
+   "position": [
+    480,
+    160
+   ],
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "VY8mExbW6awFhxWX",
+     "name": "Google Sheets account"
+    }
+   },
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "resource": "sheet",
+    "operation": "appendOrUpdate",
+    "documentId": {
+     "mode": "id",
+     "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+    },
+    "sheetName": {
+     "mode": "name",
+     "value": "Leads"
+    },
+    "range": "A:AG",
+    "options": {},
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "lead_id": "={{ $json.lead.lead_id }}",
+      "phone": "={{ $json.lead.phone }}",
+      "name": "={{ $json.lead.name }}",
+      "lastName": "={{ $json.lead.lastName }}",
+      "email": "={{ $json.lead.email }}",
+      "totalsM2": "={{ $json.lead.totalsM2 }}",
+      "address": "={{ $json.lead.address }}",
+      "anotherPlace": "={{ $json.lead.anotherPlace }}",
+      "bathroom": "={{ $json.lead.bathroom }}",
+      "diningRoom": "={{ $json.lead.diningRoom }}",
+      "kitchen": "={{ $json.lead.kitchen }}",
+      "livingRoom": "={{ $json.lead.livingRoom }}",
+      "garage": "={{ $json.lead.garage }}",
+      "mainBedroom": "={{ $json.lead.mainBedroom }}",
+      "secondBedroom": "={{ $json.lead.secondBedroom }}",
+      "plants": "={{ $json.lead.plants }}",
+      "startDate": "={{ $json.lead.startDate }}",
+      "zone": "={{ $json.lead.zone }}",
+      "comments": "={{ $json.lead.comments }}",
+      "source": "={{ $json.lead.source }}",
+      "status": "={{ $json.lead.status }}",
+      "question_index": "={{ $json.lead.question_index }}",
+      "cualificado": "={{ $json.lead.cualificado }}",
+      "razon_no_cual": "={{ $json.lead.razon_no_cual }}",
+      "etapa_seg": "={{ $json.lead.etapa_seg }}",
+      "prox_seg_ts": "={{ $json.lead.prox_seg_ts }}",
+      "ultimo_msg_ts": "={{ $json.lead.ultimo_msg_ts }}",
+      "calendar_event_id": "={{ $json.lead.calendar_event_id }}",
+      "notas": "={{ $json.lead.notas }}",
+      "q1": "={{ $json.lead.q1 }}",
+      "q2": "={{ $json.lead.q2 }}",
+      "q3": "={{ $json.lead.q3 }}",
+      "q4": "={{ $json.lead.q4 }}",
+      "q5": "={{ $json.lead.q5 }}",
+      "q6": "={{ $json.lead.q6 }}",
+      "q7": "={{ $json.lead.q7 }}",
+      "q8": "={{ $json.lead.q8 }}",
+      "q9": "={{ $json.lead.q9 }}"
+     },
+     "matchingColumns": [
+      "lead_id"
+     ],
+     "schema": [
+      {
+       "id": "lead_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lead_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "phone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "phone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "name",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "name",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "lastName",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lastName",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "email",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "email",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "totalsM2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "totalsM2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "address",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "address",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "anotherPlace",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "anotherPlace",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "bathroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "bathroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "diningRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "diningRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "kitchen",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "kitchen",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "livingRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "livingRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "garage",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "garage",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "mainBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "mainBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "secondBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "secondBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "plants",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "plants",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "startDate",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "startDate",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "zone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "zone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "comments",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "comments",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "source",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "source",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "status",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "status",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "question_index",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "question_index",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "cualificado",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cualificado",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "razon_no_cual",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "razon_no_cual",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "etapa_seg",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "etapa_seg",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "prox_seg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "prox_seg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "ultimo_msg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "ultimo_msg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "calendar_event_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "calendar_event_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "notas",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "notas",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q1",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q1",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q3",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q3",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q4",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q4",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q5",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q5",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q6",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q6",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q7",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q7",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q8",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q8",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q9",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q9",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ]
+    }
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000006b",
+   "name": "Upsert lead (no laboral)",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.7,
+   "position": [
+    480,
+    460
+   ],
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "VY8mExbW6awFhxWX",
+     "name": "Google Sheets account"
+    }
+   },
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+    "sendBody": true,
+    "contentType": "json",
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ phone: $('Armar msg m1+m2').item.json.phone, message: $('Armar msg m1+m2').item.json.m1 }) }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      },
+      {
+       "name": "X-Secret",
+       "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+      }
+     ]
+    },
+    "options": {
+     "retryOnFail": true,
+     "maxTries": 3,
+     "waitBetweenTries": 2000
+    }
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000007",
+   "name": "Enviar m1",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.4,
+   "position": [
+    700,
+    160
+   ],
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "lR6ya95Eh7j2TOEZ",
+     "name": "EstudioVARq Secret"
+    }
+   },
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "amount": 5,
+    "unit": "seconds"
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000008",
+   "name": "Wait 5s",
+   "type": "n8n-nodes-base.wait",
+   "typeVersion": 1.1,
+   "position": [
+    900,
+    160
+   ],
+   "webhookId": "62cd5fed-56de-4fe0-be2b-d10c4ba730ec"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+    "sendBody": true,
+    "contentType": "json",
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ phone: $('Armar msg m1+m2').item.json.phone, message: $('Armar msg m1+m2').item.json.m2 }) }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      },
+      {
+       "name": "X-Secret",
+       "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+      }
+     ]
+    },
+    "options": {
+     "retryOnFail": true,
+     "maxTries": 3,
+     "waitBetweenTries": 2000
+    }
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000009",
+   "name": "Enviar m2",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.4,
+   "position": [
+    1100,
+    160
+   ],
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "lR6ya95Eh7j2TOEZ",
+     "name": "EstudioVARq Secret"
+    }
+   },
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+    "sendBody": true,
+    "contentType": "json",
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ phone: $('Armar msg no laboral').item.json.phone, message: $('Armar msg no laboral').item.json.message }) }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      },
+      {
+       "name": "X-Secret",
+       "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+      }
+     ]
+    },
+    "options": {
+     "retryOnFail": true,
+     "maxTries": 3,
+     "waitBetweenTries": 2000
+    }
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000010",
+   "name": "Enviar aviso no laboral",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.4,
+   "position": [
+    700,
+    460
+   ],
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "lR6ya95Eh7j2TOEZ",
+     "name": "EstudioVARq Secret"
+    }
+   },
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "resource": "sheet",
+    "operation": "update",
+    "documentId": {
+     "mode": "id",
+     "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+    },
+    "sheetName": {
+     "mode": "name",
+     "value": "Leads"
+    },
+    "range": "A:AG",
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "status": "wizard",
+      "question_index": 1,
+      "prox_seg_ts": "={{ $now.plus({hours:6}).toISO() }}",
+      "etapa_seg": "6h",
+      "lead_id": "={{ $('Armar msg m1+m2').item.json.lead.lead_id }}"
+     },
+     "matchingColumns": [
+      "lead_id"
+     ],
+     "schema": [
+      {
+       "id": "lead_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lead_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "phone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "phone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "name",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "name",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "lastName",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lastName",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "email",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "email",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "totalsM2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "totalsM2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "address",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "address",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "anotherPlace",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "anotherPlace",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "bathroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "bathroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "diningRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "diningRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "kitchen",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "kitchen",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "livingRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "livingRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "garage",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "garage",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "mainBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "mainBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "secondBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "secondBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "plants",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "plants",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "startDate",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "startDate",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "zone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "zone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "comments",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "comments",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "source",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "source",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "status",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "status",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "question_index",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "question_index",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "cualificado",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cualificado",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "razon_no_cual",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "razon_no_cual",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "etapa_seg",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "etapa_seg",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "prox_seg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "prox_seg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "ultimo_msg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "ultimo_msg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "calendar_event_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "calendar_event_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "notas",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "notas",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q1",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q1",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q3",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q3",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q4",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q4",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q5",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q5",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q6",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q6",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q7",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q7",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q8",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q8",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q9",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q9",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "canBeUsedToMatch": true
+    },
+    "options": {}
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000012",
+   "name": "Sheets status=wizard",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.7,
+   "position": [
+    1300,
+    160
+   ],
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "VY8mExbW6awFhxWX",
+     "name": "Google Sheets account"
+    }
+   },
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "resource": "sheet",
+    "operation": "update",
+    "documentId": {
+     "mode": "id",
+     "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+    },
+    "sheetName": {
+     "mode": "name",
+     "value": "Leads"
+    },
+    "range": "A:AG",
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "status": "nuevo",
+      "lead_id": "={{ $('Armar msg no laboral').item.json.lead.lead_id }}"
+     },
+     "matchingColumns": [
+      "lead_id"
+     ],
+     "schema": [
+      {
+       "id": "lead_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lead_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "phone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "phone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "name",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "name",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "lastName",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lastName",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "email",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "email",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "totalsM2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "totalsM2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "address",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "address",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "anotherPlace",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "anotherPlace",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "bathroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "bathroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "diningRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "diningRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "kitchen",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "kitchen",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "livingRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "livingRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "garage",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "garage",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "mainBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "mainBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "secondBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "secondBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "plants",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "plants",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "startDate",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "startDate",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "zone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "zone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "comments",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "comments",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "source",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "source",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "status",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "status",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "question_index",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "question_index",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "cualificado",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cualificado",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "razon_no_cual",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "razon_no_cual",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "etapa_seg",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "etapa_seg",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "prox_seg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "prox_seg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "ultimo_msg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "ultimo_msg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "calendar_event_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "calendar_event_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "notas",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "notas",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q1",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q1",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q3",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q3",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q4",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q4",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q5",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q5",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q6",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q6",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q7",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q7",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q8",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q8",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q9",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q9",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "canBeUsedToMatch": true
+    },
+    "options": {}
+   },
+   "id": "1a2b3c4d-0001-0001-0001-000000000011",
+   "name": "Sheets status=nuevo (no laboral)",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.7,
+   "position": [
+    900,
+    460
+   ],
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "VY8mExbW6awFhxWX",
+     "name": "Google Sheets account"
+    }
+   },
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "mode": "manual",
+    "includeOtherFields": true,
+    "assignments": {
+     "assignments": [
+      {
+       "id": "evt-step",
+       "name": "step",
+       "type": "string",
+       "value": "bienvenida"
+      },
+      {
+       "id": "evt-phone",
+       "name": "phone",
+       "type": "string",
+       "value": "={{ $('Armar msg m1+m2').item.json.phone }}"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "15ce0378-d4e2-4d28-8b47-4a524394eaa7",
+   "name": "Armar evento (bienvenida)",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.5,
+   "position": [
+    1150,
+    220
+   ]
+  },
+  {
+   "parameters": {
+    "options": {
+     "waitForSubWorkflow": false
+    },
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "fMtZQG0f2sgv3SLq",
+     "cachedResultName": "EstudioVARq — Notificar CRM",
+     "cachedResultUrl": null
+    },
+    "workflowInputs": {
+     "mappingMode": "defineBelow",
+     "value": {},
+     "schema": []
+    }
+   },
+   "id": "53c53524-4baf-4ebf-8fa8-768dba11e790",
+   "name": "Notificar CRM (bienvenida)",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.3,
+   "position": [
+    1220,
+    220
+   ],
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "mode": "manual",
+    "includeOtherFields": true,
+    "assignments": {
+     "assignments": [
+      {
+       "id": "evt-step",
+       "name": "step",
+       "type": "string",
+       "value": "bienvenida"
+      },
+      {
+       "id": "evt-phone",
+       "name": "phone",
+       "type": "string",
+       "value": "={{ $('Armar msg no laboral').item.json.phone }}"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "db4396f8-eeac-47a5-a7e9-3966cc2cfe63",
+   "name": "Armar evento (no laboral)",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.5,
+   "position": [
+    760,
+    400
+   ]
+  },
+  {
+   "parameters": {
+    "options": {
+     "waitForSubWorkflow": false
+    },
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "fMtZQG0f2sgv3SLq",
+     "cachedResultName": "EstudioVARq — Notificar CRM",
+     "cachedResultUrl": null
+    },
+    "workflowInputs": {
+     "mappingMode": "defineBelow",
+     "value": {},
+     "schema": []
+    }
+   },
+   "id": "73f209a6-be7d-4528-84f4-24dac685c9b1",
+   "name": "Notificar CRM (no laboral)",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.3,
+   "position": [
+    830,
+    520
+   ],
+   "alwaysOutputData": true
+  }
+ ],
+ "connections": {
+  "Webhook entrada": {
+   "main": [
+    [
+     {
+      "node": "Normalizar lead",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalizar lead": {
+   "main": [
+    [
+     {
+      "node": "IF horario laboral",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "IF horario laboral": {
+   "main": [
+    [
+     {
+      "node": "Armar msg m1+m2",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Armar msg no laboral",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar msg m1+m2": {
+   "main": [
+    [
+     {
+      "node": "Upsert lead (laboral)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar msg no laboral": {
+   "main": [
+    [
+     {
+      "node": "Upsert lead (no laboral)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Upsert lead (laboral)": {
+   "main": [
+    [
+     {
+      "node": "Enviar m1",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Upsert lead (no laboral)": {
+   "main": [
+    [
+     {
+      "node": "Enviar aviso no laboral",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar m1": {
+   "main": [
+    [
+     {
+      "node": "Wait 5s",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Wait 5s": {
+   "main": [
+    [
+     {
+      "node": "Enviar m2",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar m2": {
+   "main": [
+    [
+     {
+      "node": "Armar evento (bienvenida)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar aviso no laboral": {
+   "main": [
+    [
+     {
+      "node": "Armar evento (no laboral)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar evento (bienvenida)": {
+   "main": [
+    [
+     {
+      "node": "Notificar CRM (bienvenida)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Notificar CRM (bienvenida)": {
+   "main": [
+    [
+     {
+      "node": "Sheets status=wizard",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar evento (no laboral)": {
+   "main": [
+    [
+     {
+      "node": "Notificar CRM (no laboral)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Notificar CRM (no laboral)": {
+   "main": [
+    [
+     {
+      "node": "Sheets status=nuevo (no laboral)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": null,
+ "meta": null,
+ "nodeGroups": [],
+ "pinData": null,
+ "versionId": "229e7f73-f6ea-4015-b3d9-faeb7ec9722a",
+ "activeVersionId": "229e7f73-f6ea-4015-b3d9-faeb7ec9722a",
+ "versionCounter": 14,
+ "triggerCount": 1,
+ "sourceWorkflowId": null,
+ "shared": [
+  {
+   "updatedAt": "2026-08-03T14:13:37.457Z",
+   "createdAt": "2026-08-03T14:13:37.457Z",
+   "role": "workflow:owner",
+   "workflowId": "h1kQ7hg0aWjYXl4v",
+   "projectId": "uya5deefUrhAOsVI",
+   "project": {
+    "updatedAt": "2026-07-15T17:18:53.756Z",
+    "createdAt": "2026-07-15T17:10:35.405Z",
+    "id": "uya5deefUrhAOsVI",
+    "name": "Facundo Demarco <facundod@iwebtecnology.com>",
+    "type": "personal",
+    "icon": null,
+    "description": null,
+    "customTelemetryTags": [],
+    "creatorId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   }
+  }
+ ],
+ "tags": [],
+ "activeVersion": {
+  "updatedAt": "2026-08-05T13:21:29.667Z",
+  "createdAt": "2026-08-05T13:21:29.667Z",
+  "versionId": "229e7f73-f6ea-4015-b3d9-faeb7ec9722a",
+  "workflowId": "h1kQ7hg0aWjYXl4v",
+  "nodes": [
+   {
+    "parameters": {
+     "httpMethod": "POST",
+     "path": "estudiovarq-entrada-testing",
+     "responseMode": "onReceived",
+     "options": {}
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000001",
+    "name": "Webhook entrada",
+    "type": "n8n-nodes-base.webhook",
+    "typeVersion": 2.1,
+    "position": [
+     -400,
+     300
+    ],
+    "webhookId": "estudiovarq-entrada-testing"
+   },
+   {
+    "parameters": {
+     "language": "javaScript",
+     "mode": "runOnceForAllItems",
+     "jsCode": "const rawBody = $json.body !== undefined ? (typeof $json.body === \"string\" ? safeParse($json.body) : $json.body) : $json;\nfunction safeParse(s) { try { const o = JSON.parse(s); return (o && typeof o === \"object\") ? o : {}; } catch (e) { return {}; } }\nconst b = rawBody;\n\nfunction normalizePhone(raw) {\n  if (!raw) return \"\";\n  let s = String(raw).replace(/[^\\d+]/g, \"\");\n  if (s.startsWith(\"+\")) return s;\n  return \"+\" + s;\n}\n\nconst phone = normalizePhone(b.phone);\nconst leadId = b.lead_id || ($now.toMillis() + \"-\" + Math.random().toString(36).slice(2, 8));\n\nconst lead = {\n  lead_id: leadId,\n  phone: phone,\n  name: (b.name || \"\").toString().trim(),\n  lastName: (b.lastName || \"\").toString().trim(),\n  email: (b.email || \"\").toString().trim(),\n  totalsM2: Number(b.totalsM2) || 0,\n  address: b.address || \"\",\n  anotherPlace: b.anotherPlace || \"\",\n  bathroom: b.bathroom || \"\",\n  diningRoom: b.diningRoom || \"\",\n  kitchen: b.kitchen || \"\",\n  livingRoom: b.livingRoom || \"\",\n  garage: b.garage || \"\",\n  mainBedroom: b.mainBedroom || \"\",\n  secondBedroom: b.secondBedroom || \"\",\n  plants: b.plants || \"\",\n  startDate: b.startDate || \"\",\n  zone: b.zone || \"\",\n  comments: b.comments || \"\",\n  source: b.source || \"wizardForm\",\n  status: \"nuevo\",\n  question_index: 0,\n  cualificado: \"\",\n  razon_no_cual: \"\",\n  etapa_seg: \"\",\n  prox_seg_ts: \"\",\n  ultimo_msg_ts: \"\",\n  calendar_event_id: \"\",\n  notas: \"\"\n};\n\nconst now = $now.setZone(\"America/Argentina/Buenos_Aires\");\nconst weekday = now.weekday;\nconst hour = now.hour;\nconst laboral = (weekday >= 1 && weekday <= 5) && (hour >= 8 && hour < 18);\n\nreturn [{ json: { lead, laboral, hour, weekday } }];"
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000002",
+    "name": "Normalizar lead",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+     -180,
+     300
+    ]
+   },
+   {
+    "parameters": {
+     "conditions": {
+      "options": {
+       "caseSensitive": true,
+       "leftValue": "",
+       "typeValidation": "strict"
+      },
+      "conditions": [
+       {
+        "id": "cond-laboral",
+        "leftValue": "={{ $json.laboral }}",
+        "rightValue": true,
+        "operator": {
+         "type": "boolean",
+         "operation": "true",
+         "singleValue": true
+        }
+       }
+      ],
+      "combinator": "and"
+     },
+     "options": {}
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000003",
+    "name": "IF horario laboral",
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2.3,
+    "position": [
+     40,
+     300
+    ]
+   },
+   {
+    "parameters": {
+     "mode": "manual",
+     "includeOtherFields": false,
+     "assignments": {
+      "assignments": [
+       {
+        "id": "msg-m1",
+        "name": "m1",
+        "value": "={{ 'Hola ' + $json.lead.name + '! 👋👋\\n\\nComo estás? Soy Sofía, del equipo de Estudio VArq - Arquitectura.\\n\\nMe alegra que estés con el proyecto de tu casa! Felicitaciones! ❤️\\n\\nEn base a las respuestas que diste en nuestro formulario, hice los cálculos y *los metros cuadrados totales de tu casa ideal son ' + $json.lead.totalsM2 + ' m2*.' }}",
+        "type": "string"
+       },
+       {
+        "id": "msg-m2",
+        "name": "m2",
+        "value": "={{ 'El próximo paso es: Ver tu casa terminada antes de construirla y saber cuánto saldría hacerla 🏡\\n\\nTe interesa?' }}",
+        "type": "string"
+       },
+       {
+        "id": "phone-laboral",
+        "name": "phone",
+        "value": "={{ $json.lead.phone }}",
+        "type": "string"
+       },
+       {
+        "id": "lead-laboral",
+        "name": "lead",
+        "value": "={{ $json.lead }}",
+        "type": "object"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000005",
+    "name": "Armar msg m1+m2",
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.4,
+    "position": [
+     260,
+     160
+    ],
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "mode": "manual",
+     "includeOtherFields": false,
+     "assignments": {
+      "assignments": [
+       {
+        "id": "msg-nolaboral",
+        "name": "message",
+        "value": "={{ 'Hola ' + $json.lead.name + '!\\nRecibimos los datos que enviaste en nuestro formulario web.\\nNuestro horario de atención es de lunes a viernes de 08 a 18hs. Nos vamos a poner en contacto con vos y darte los resultados en m2 de tu proyecto en esos horarios!' }}",
+        "type": "string"
+       },
+       {
+        "id": "phone-nolaboral",
+        "name": "phone",
+        "value": "={{ $json.lead.phone }}",
+        "type": "string"
+       },
+       {
+        "id": "lead-nolaboral",
+        "name": "lead",
+        "value": "={{ $json.lead }}",
+        "type": "object"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000004",
+    "name": "Armar msg no laboral",
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.4,
+    "position": [
+     260,
+     460
+    ],
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "resource": "sheet",
+     "operation": "appendOrUpdate",
+     "documentId": {
+      "mode": "id",
+      "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+     },
+     "sheetName": {
+      "mode": "name",
+      "value": "Leads"
+     },
+     "range": "A:AG",
+     "options": {},
+     "columns": {
+      "mappingMode": "defineBelow",
+      "value": {
+       "lead_id": "={{ $json.lead.lead_id }}",
+       "phone": "={{ $json.lead.phone }}",
+       "name": "={{ $json.lead.name }}",
+       "lastName": "={{ $json.lead.lastName }}",
+       "email": "={{ $json.lead.email }}",
+       "totalsM2": "={{ $json.lead.totalsM2 }}",
+       "address": "={{ $json.lead.address }}",
+       "anotherPlace": "={{ $json.lead.anotherPlace }}",
+       "bathroom": "={{ $json.lead.bathroom }}",
+       "diningRoom": "={{ $json.lead.diningRoom }}",
+       "kitchen": "={{ $json.lead.kitchen }}",
+       "livingRoom": "={{ $json.lead.livingRoom }}",
+       "garage": "={{ $json.lead.garage }}",
+       "mainBedroom": "={{ $json.lead.mainBedroom }}",
+       "secondBedroom": "={{ $json.lead.secondBedroom }}",
+       "plants": "={{ $json.lead.plants }}",
+       "startDate": "={{ $json.lead.startDate }}",
+       "zone": "={{ $json.lead.zone }}",
+       "comments": "={{ $json.lead.comments }}",
+       "source": "={{ $json.lead.source }}",
+       "status": "={{ $json.lead.status }}",
+       "question_index": "={{ $json.lead.question_index }}",
+       "cualificado": "={{ $json.lead.cualificado }}",
+       "razon_no_cual": "={{ $json.lead.razon_no_cual }}",
+       "etapa_seg": "={{ $json.lead.etapa_seg }}",
+       "prox_seg_ts": "={{ $json.lead.prox_seg_ts }}",
+       "ultimo_msg_ts": "={{ $json.lead.ultimo_msg_ts }}",
+       "calendar_event_id": "={{ $json.lead.calendar_event_id }}",
+       "notas": "={{ $json.lead.notas }}",
+       "q1": "={{ $json.lead.q1 }}",
+       "q2": "={{ $json.lead.q2 }}",
+       "q3": "={{ $json.lead.q3 }}",
+       "q4": "={{ $json.lead.q4 }}",
+       "q5": "={{ $json.lead.q5 }}",
+       "q6": "={{ $json.lead.q6 }}",
+       "q7": "={{ $json.lead.q7 }}",
+       "q8": "={{ $json.lead.q8 }}",
+       "q9": "={{ $json.lead.q9 }}"
+      },
+      "matchingColumns": [
+       "lead_id"
+      ],
+      "schema": [
+       {
+        "id": "lead_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lead_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "phone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "phone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "name",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "name",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "lastName",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lastName",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "email",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "email",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "totalsM2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "totalsM2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "address",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "address",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "anotherPlace",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "anotherPlace",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "bathroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "bathroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "diningRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "diningRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "kitchen",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "kitchen",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "livingRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "livingRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "garage",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "garage",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "mainBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "mainBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "secondBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "secondBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "plants",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "plants",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "startDate",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "startDate",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "zone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "zone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "comments",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "comments",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "source",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "source",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "status",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "status",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "question_index",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "question_index",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "cualificado",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cualificado",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "razon_no_cual",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "razon_no_cual",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "etapa_seg",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "etapa_seg",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "prox_seg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "prox_seg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "ultimo_msg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "ultimo_msg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "calendar_event_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "calendar_event_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "notas",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "notas",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q1",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q1",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q3",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q3",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q4",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q4",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q5",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q5",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q6",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q6",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q7",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q7",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q8",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q8",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q9",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q9",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ]
+     }
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000006a",
+    "name": "Upsert lead (laboral)",
+    "type": "n8n-nodes-base.googleSheets",
+    "typeVersion": 4.7,
+    "position": [
+     480,
+     160
+    ],
+    "credentials": {
+     "googleSheetsOAuth2Api": {
+      "id": "VY8mExbW6awFhxWX",
+      "name": "Google Sheets account"
+     }
+    },
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "resource": "sheet",
+     "operation": "appendOrUpdate",
+     "documentId": {
+      "mode": "id",
+      "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+     },
+     "sheetName": {
+      "mode": "name",
+      "value": "Leads"
+     },
+     "range": "A:AG",
+     "options": {},
+     "columns": {
+      "mappingMode": "defineBelow",
+      "value": {
+       "lead_id": "={{ $json.lead.lead_id }}",
+       "phone": "={{ $json.lead.phone }}",
+       "name": "={{ $json.lead.name }}",
+       "lastName": "={{ $json.lead.lastName }}",
+       "email": "={{ $json.lead.email }}",
+       "totalsM2": "={{ $json.lead.totalsM2 }}",
+       "address": "={{ $json.lead.address }}",
+       "anotherPlace": "={{ $json.lead.anotherPlace }}",
+       "bathroom": "={{ $json.lead.bathroom }}",
+       "diningRoom": "={{ $json.lead.diningRoom }}",
+       "kitchen": "={{ $json.lead.kitchen }}",
+       "livingRoom": "={{ $json.lead.livingRoom }}",
+       "garage": "={{ $json.lead.garage }}",
+       "mainBedroom": "={{ $json.lead.mainBedroom }}",
+       "secondBedroom": "={{ $json.lead.secondBedroom }}",
+       "plants": "={{ $json.lead.plants }}",
+       "startDate": "={{ $json.lead.startDate }}",
+       "zone": "={{ $json.lead.zone }}",
+       "comments": "={{ $json.lead.comments }}",
+       "source": "={{ $json.lead.source }}",
+       "status": "={{ $json.lead.status }}",
+       "question_index": "={{ $json.lead.question_index }}",
+       "cualificado": "={{ $json.lead.cualificado }}",
+       "razon_no_cual": "={{ $json.lead.razon_no_cual }}",
+       "etapa_seg": "={{ $json.lead.etapa_seg }}",
+       "prox_seg_ts": "={{ $json.lead.prox_seg_ts }}",
+       "ultimo_msg_ts": "={{ $json.lead.ultimo_msg_ts }}",
+       "calendar_event_id": "={{ $json.lead.calendar_event_id }}",
+       "notas": "={{ $json.lead.notas }}",
+       "q1": "={{ $json.lead.q1 }}",
+       "q2": "={{ $json.lead.q2 }}",
+       "q3": "={{ $json.lead.q3 }}",
+       "q4": "={{ $json.lead.q4 }}",
+       "q5": "={{ $json.lead.q5 }}",
+       "q6": "={{ $json.lead.q6 }}",
+       "q7": "={{ $json.lead.q7 }}",
+       "q8": "={{ $json.lead.q8 }}",
+       "q9": "={{ $json.lead.q9 }}"
+      },
+      "matchingColumns": [
+       "lead_id"
+      ],
+      "schema": [
+       {
+        "id": "lead_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lead_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "phone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "phone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "name",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "name",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "lastName",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lastName",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "email",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "email",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "totalsM2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "totalsM2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "address",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "address",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "anotherPlace",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "anotherPlace",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "bathroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "bathroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "diningRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "diningRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "kitchen",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "kitchen",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "livingRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "livingRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "garage",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "garage",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "mainBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "mainBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "secondBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "secondBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "plants",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "plants",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "startDate",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "startDate",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "zone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "zone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "comments",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "comments",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "source",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "source",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "status",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "status",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "question_index",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "question_index",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "cualificado",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cualificado",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "razon_no_cual",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "razon_no_cual",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "etapa_seg",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "etapa_seg",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "prox_seg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "prox_seg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "ultimo_msg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "ultimo_msg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "calendar_event_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "calendar_event_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "notas",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "notas",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q1",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q1",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q3",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q3",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q4",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q4",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q5",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q5",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q6",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q6",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q7",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q7",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q8",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q8",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q9",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q9",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ]
+     }
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000006b",
+    "name": "Upsert lead (no laboral)",
+    "type": "n8n-nodes-base.googleSheets",
+    "typeVersion": 4.7,
+    "position": [
+     480,
+     460
+    ],
+    "credentials": {
+     "googleSheetsOAuth2Api": {
+      "id": "VY8mExbW6awFhxWX",
+      "name": "Google Sheets account"
+     }
+    },
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "method": "POST",
+     "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+     "sendBody": true,
+     "contentType": "json",
+     "specifyBody": "json",
+     "jsonBody": "={{ JSON.stringify({ phone: $('Armar msg m1+m2').item.json.phone, message: $('Armar msg m1+m2').item.json.m1 }) }}",
+     "sendHeaders": true,
+     "headerParameters": {
+      "parameters": [
+       {
+        "name": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "name": "X-Secret",
+        "value": "={{ $credentials.httpHeaderAuth ? $credentials.httpHeaderAuth.value : 'MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq' }}"
+       }
+      ]
+     },
+     "options": {
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+     }
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000007",
+    "name": "Enviar m1",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.4,
+    "position": [
+     700,
+     160
+    ],
+    "credentials": {
+     "httpHeaderAuth": {
+      "id": "lR6ya95Eh7j2TOEZ",
+      "name": "EstudioVARq Secret"
+     }
+    },
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "amount": 5,
+     "unit": "seconds"
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000008",
+    "name": "Wait 5s",
+    "type": "n8n-nodes-base.wait",
+    "typeVersion": 1.1,
+    "position": [
+     900,
+     160
+    ],
+    "webhookId": "62cd5fed-56de-4fe0-be2b-d10c4ba730ec"
+   },
+   {
+    "parameters": {
+     "method": "POST",
+     "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+     "sendBody": true,
+     "contentType": "json",
+     "specifyBody": "json",
+     "jsonBody": "={{ JSON.stringify({ phone: $('Armar msg m1+m2').item.json.phone, message: $('Armar msg m1+m2').item.json.m2 }) }}",
+     "sendHeaders": true,
+     "headerParameters": {
+      "parameters": [
+       {
+        "name": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "name": "X-Secret",
+        "value": "={{ $credentials.httpHeaderAuth ? $credentials.httpHeaderAuth.value : 'MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq' }}"
+       }
+      ]
+     },
+     "options": {
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+     }
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000009",
+    "name": "Enviar m2",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.4,
+    "position": [
+     1100,
+     160
+    ],
+    "credentials": {
+     "httpHeaderAuth": {
+      "id": "lR6ya95Eh7j2TOEZ",
+      "name": "EstudioVARq Secret"
+     }
+    },
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "method": "POST",
+     "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+     "sendBody": true,
+     "contentType": "json",
+     "specifyBody": "json",
+     "jsonBody": "={{ JSON.stringify({ phone: $('Armar msg no laboral').item.json.phone, message: $('Armar msg no laboral').item.json.message }) }}",
+     "sendHeaders": true,
+     "headerParameters": {
+      "parameters": [
+       {
+        "name": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "name": "X-Secret",
+        "value": "={{ $credentials.httpHeaderAuth ? $credentials.httpHeaderAuth.value : 'MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq' }}"
+       }
+      ]
+     },
+     "options": {
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+     }
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000010",
+    "name": "Enviar aviso no laboral",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.4,
+    "position": [
+     700,
+     460
+    ],
+    "credentials": {
+     "httpHeaderAuth": {
+      "id": "lR6ya95Eh7j2TOEZ",
+      "name": "EstudioVARq Secret"
+     }
+    },
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "resource": "sheet",
+     "operation": "update",
+     "documentId": {
+      "mode": "id",
+      "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+     },
+     "sheetName": {
+      "mode": "name",
+      "value": "Leads"
+     },
+     "range": "A:AG",
+     "columns": {
+      "mappingMode": "defineBelow",
+      "value": {
+       "status": "wizard",
+       "question_index": 1,
+       "prox_seg_ts": "={{ $now.plus({hours:6}).toISO() }}",
+       "etapa_seg": "6h",
+       "lead_id": "={{ $('Armar msg m1+m2').item.json.lead.lead_id }}"
+      },
+      "matchingColumns": [
+       "lead_id"
+      ],
+      "schema": [
+       {
+        "id": "lead_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lead_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "phone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "phone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "name",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "name",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "lastName",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lastName",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "email",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "email",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "totalsM2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "totalsM2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "address",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "address",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "anotherPlace",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "anotherPlace",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "bathroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "bathroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "diningRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "diningRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "kitchen",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "kitchen",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "livingRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "livingRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "garage",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "garage",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "mainBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "mainBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "secondBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "secondBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "plants",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "plants",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "startDate",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "startDate",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "zone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "zone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "comments",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "comments",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "source",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "source",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "status",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "status",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "question_index",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "question_index",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "cualificado",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cualificado",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "razon_no_cual",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "razon_no_cual",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "etapa_seg",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "etapa_seg",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "prox_seg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "prox_seg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "ultimo_msg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "ultimo_msg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "calendar_event_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "calendar_event_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "notas",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "notas",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q1",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q1",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q3",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q3",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q4",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q4",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q5",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q5",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q6",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q6",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q7",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q7",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q8",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q8",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q9",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q9",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "canBeUsedToMatch": true
+     },
+     "options": {}
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000012",
+    "name": "Sheets status=wizard",
+    "type": "n8n-nodes-base.googleSheets",
+    "typeVersion": 4.7,
+    "position": [
+     1300,
+     160
+    ],
+    "credentials": {
+     "googleSheetsOAuth2Api": {
+      "id": "VY8mExbW6awFhxWX",
+      "name": "Google Sheets account"
+     }
+    },
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "resource": "sheet",
+     "operation": "update",
+     "documentId": {
+      "mode": "id",
+      "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+     },
+     "sheetName": {
+      "mode": "name",
+      "value": "Leads"
+     },
+     "range": "A:AG",
+     "columns": {
+      "mappingMode": "defineBelow",
+      "value": {
+       "status": "nuevo",
+       "lead_id": "={{ $('Armar msg no laboral').item.json.lead.lead_id }}"
+      },
+      "matchingColumns": [
+       "lead_id"
+      ],
+      "schema": [
+       {
+        "id": "lead_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lead_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "phone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "phone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "name",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "name",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "lastName",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lastName",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "email",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "email",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "totalsM2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "totalsM2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "address",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "address",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "anotherPlace",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "anotherPlace",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "bathroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "bathroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "diningRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "diningRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "kitchen",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "kitchen",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "livingRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "livingRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "garage",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "garage",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "mainBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "mainBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "secondBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "secondBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "plants",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "plants",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "startDate",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "startDate",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "zone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "zone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "comments",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "comments",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "source",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "source",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "status",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "status",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "question_index",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "question_index",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "cualificado",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cualificado",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "razon_no_cual",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "razon_no_cual",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "etapa_seg",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "etapa_seg",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "prox_seg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "prox_seg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "ultimo_msg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "ultimo_msg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "calendar_event_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "calendar_event_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "notas",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "notas",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q1",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q1",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q3",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q3",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q4",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q4",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q5",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q5",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q6",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q6",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q7",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q7",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q8",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q8",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q9",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q9",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "canBeUsedToMatch": true
+     },
+     "options": {}
+    },
+    "id": "1a2b3c4d-0001-0001-0001-000000000011",
+    "name": "Sheets status=nuevo (no laboral)",
+    "type": "n8n-nodes-base.googleSheets",
+    "typeVersion": 4.7,
+    "position": [
+     900,
+     460
+    ],
+    "credentials": {
+     "googleSheetsOAuth2Api": {
+      "id": "VY8mExbW6awFhxWX",
+      "name": "Google Sheets account"
+     }
+    },
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "mode": "manual",
+     "includeOtherFields": true,
+     "assignments": {
+      "assignments": [
+       {
+        "id": "evt-step",
+        "name": "step",
+        "type": "string",
+        "value": "bienvenida"
+       },
+       {
+        "id": "evt-phone",
+        "name": "phone",
+        "type": "string",
+        "value": "={{ $('Armar msg m1+m2').item.json.phone }}"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "id": "15ce0378-d4e2-4d28-8b47-4a524394eaa7",
+    "name": "Armar evento (bienvenida)",
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.5,
+    "position": [
+     1150,
+     220
+    ]
+   },
+   {
+    "parameters": {
+     "options": {
+      "waitForSubWorkflow": false
+     },
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "fMtZQG0f2sgv3SLq",
+      "cachedResultName": "EstudioVARq — Notificar CRM",
+      "cachedResultUrl": null
+     },
+     "workflowInputs": {
+      "mappingMode": "defineBelow",
+      "value": {},
+      "schema": []
+     }
+    },
+    "id": "53c53524-4baf-4ebf-8fa8-768dba11e790",
+    "name": "Notificar CRM (bienvenida)",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "typeVersion": 1.3,
+    "position": [
+     1220,
+     220
+    ],
+    "alwaysOutputData": true
+   },
+   {
+    "parameters": {
+     "mode": "manual",
+     "includeOtherFields": true,
+     "assignments": {
+      "assignments": [
+       {
+        "id": "evt-step",
+        "name": "step",
+        "type": "string",
+        "value": "bienvenida"
+       },
+       {
+        "id": "evt-phone",
+        "name": "phone",
+        "type": "string",
+        "value": "={{ $('Armar msg no laboral').item.json.phone }}"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "id": "db4396f8-eeac-47a5-a7e9-3966cc2cfe63",
+    "name": "Armar evento (no laboral)",
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.5,
+    "position": [
+     760,
+     400
+    ]
+   },
+   {
+    "parameters": {
+     "options": {
+      "waitForSubWorkflow": false
+     },
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "fMtZQG0f2sgv3SLq",
+      "cachedResultName": "EstudioVARq — Notificar CRM",
+      "cachedResultUrl": null
+     },
+     "workflowInputs": {
+      "mappingMode": "defineBelow",
+      "value": {},
+      "schema": []
+     }
+    },
+    "id": "73f209a6-be7d-4528-84f4-24dac685c9b1",
+    "name": "Notificar CRM (no laboral)",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "typeVersion": 1.3,
+    "position": [
+     830,
+     520
+    ],
+    "alwaysOutputData": true
+   }
+  ],
+  "connections": {
+   "Webhook entrada": {
+    "main": [
+     [
+      {
+       "node": "Normalizar lead",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Normalizar lead": {
+    "main": [
+     [
+      {
+       "node": "IF horario laboral",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "IF horario laboral": {
+    "main": [
+     [
+      {
+       "node": "Armar msg m1+m2",
+       "type": "main",
+       "index": 0
+      }
+     ],
+     [
+      {
+       "node": "Armar msg no laboral",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Armar msg m1+m2": {
+    "main": [
+     [
+      {
+       "node": "Upsert lead (laboral)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Armar msg no laboral": {
+    "main": [
+     [
+      {
+       "node": "Upsert lead (no laboral)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Upsert lead (laboral)": {
+    "main": [
+     [
+      {
+       "node": "Enviar m1",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Upsert lead (no laboral)": {
+    "main": [
+     [
+      {
+       "node": "Enviar aviso no laboral",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Enviar m1": {
+    "main": [
+     [
+      {
+       "node": "Wait 5s",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Wait 5s": {
+    "main": [
+     [
+      {
+       "node": "Enviar m2",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Enviar m2": {
+    "main": [
+     [
+      {
+       "node": "Armar evento (bienvenida)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Enviar aviso no laboral": {
+    "main": [
+     [
+      {
+       "node": "Armar evento (no laboral)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Armar evento (bienvenida)": {
+    "main": [
+     [
+      {
+       "node": "Notificar CRM (bienvenida)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Notificar CRM (bienvenida)": {
+    "main": [
+     [
+      {
+       "node": "Sheets status=wizard",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Armar evento (no laboral)": {
+    "main": [
+     [
+      {
+       "node": "Notificar CRM (no laboral)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Notificar CRM (no laboral)": {
+    "main": [
+     [
+      {
+       "node": "Sheets status=nuevo (no laboral)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Facundo Demarco",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "workflowPublishHistory": [
+   {
+    "createdAt": "2026-08-05T13:21:29.948Z",
+    "id": 71,
+    "workflowId": "h1kQ7hg0aWjYXl4v",
+    "versionId": "229e7f73-f6ea-4015-b3d9-faeb7ec9722a",
+    "event": "activated",
+    "userId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   },
+   {
+    "createdAt": "2026-08-05T13:21:29.839Z",
+    "id": 70,
+    "workflowId": "h1kQ7hg0aWjYXl4v",
+    "versionId": "229e7f73-f6ea-4015-b3d9-faeb7ec9722a",
+    "event": "deactivated",
+    "userId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   }
+  ]
+ }
+}

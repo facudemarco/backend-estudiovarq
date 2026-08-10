@@ -7,12 +7,18 @@ const {
   fetchLatestBaileysVersion,
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
-const qrcode = require("qrcode-terminal");
+const qrcodeTerminal = require("qrcode-terminal");
+const qrcode = require("qrcode");
 const fs = require("fs");
 const path = require("path");
 
+const cors = require("cors");
+
 const app = express();
 app.use(express.json());
+app.use(cors({
+  origin: ["http://localhost:3000", "https://www.estudiovarq.com.ar", "https://estudiovarq.com.ar"],
+}));
 
 const logger = pino({
   level: "info",
@@ -45,8 +51,12 @@ const N8N_REPLIES_SECRET =
   process.env.N8N_REPLIES_SECRET ||
   "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq";
 
+const CRM_INBOX_URL = process.env.CRM_INBOX_URL || "http://localhost:8000/crm/inbox";
+
 let sock;
 let reconnectEnabled = true;
+let latestQR = null;
+let connectedPhone = "";
 let isReconnecting = false;
 let isConnected = false;
 let reconnectAttempts = 0;
@@ -263,20 +273,26 @@ async function startSock() {
 
     // 🟢 Mostrar QR SIEMPRE que Baileys lo genere (sin cooldown)
     if (qr) {
+      latestQR = qr;
+      connectedPhone = "";
       console.log("\n================================================");
       console.log("🟢 Escaneá este QR con WhatsApp (Estudio VARQ):");
-      qrcode.generate(qr, { small: true });
+      qrcodeTerminal.generate(qr, { small: true });
       console.log("================================================");
     }
 
     if (connection === "open") {
       logger.info("✅ Sesión de WhatsApp activa");
       isConnected = true;
+      latestQR = null;
       isReconnecting = false;
       reconnectAttempts = 0;
       backupAuth();
       versionedBackup();
       startPeriodicBackup();
+      if (sock?.user?.id) {
+        connectedPhone = sock.user.id.split(":")[0] || "";
+      }
     }
 
     if (connection === "close") {
@@ -376,7 +392,13 @@ async function startSock() {
             },
             body: JSON.stringify(payload),
           }),
+          fetch(CRM_INBOX_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, text }),
+          }),
         ]).catch(() => {});
+        logger.info({ phone, text }, "📝 Mensaje enviado a CRM inbox");
       }
     } catch (e) {
       logger.error("messages.upsert error:", e?.message || e);
@@ -435,6 +457,32 @@ app.post("/status", (req, res) => {
   return res.json({ ok: true, phone: target, stopped: !!stopped[target] });
 });
 
+app.post("/pause", (req, res) => {
+  const target = normalizeE164Plus(req.body?.phone);
+  if (!target) return res.status(400).json({ ok: false, error: "phone required" });
+  const stopped = loadStopped();
+  stopped[target] = true;
+  saveStopped(stopped);
+  logger.info(`⏸ [manual-pause] ${target} pausado por humano`);
+  return res.json({ ok: true, phone: target, paused: true });
+});
+
+app.post("/resume", (req, res) => {
+  const target = normalizeE164Plus(req.body?.phone);
+  if (!target) return res.status(400).json({ ok: false, error: "phone required" });
+  const stopped = loadStopped();
+  delete stopped[target];
+  saveStopped(stopped);
+  logger.info(`▶️ [manual-resume] ${target} seguimientos reanudados`);
+  return res.json({ ok: true, phone: target, paused: false });
+});
+
+// QR PEM data URL actual (si hay un QR vigente en memoria)
+function getQRDataUrl() {
+  if (!latestQR) return null;
+  return qrcode.toDataURL(latestQR, { width: 280, margin: 1 });
+}
+
 // 🛡️ Endpoint /health para monitoreo
 app.get("/health", (req, res) => {
   const uptimeMin = Math.floor((Date.now() - startTime) / 60000);
@@ -446,8 +494,48 @@ app.get("/health", (req, res) => {
     hasAuth: hasAuth(),
     uptime: `${uptimeMin} minutos`,
     reconnectAttempts,
+    stoppedCount: Object.keys(loadStopped()).length,
     backups: { simple: fs.existsSync(path.join(AUTH_BACKUP_DIR, "creds.json")), versioned: vBackups.length, latest: vBackups[0] || null },
   });
+});
+
+// 📲 Estado para el panel /sofia
+app.get("/state", (req, res) => {
+  return res.json({
+    connected: isConnected,
+    hasAuth: hasAuth(),
+    qrAvailable: !!latestQR,
+    phone: connectedPhone,
+    stopped: loadStopped(),
+  });
+});
+
+// 📲 QR como imagen base64 para el frontend
+app.get("/qr", async (req, res) => {
+  if (isConnected) {
+    return res.json({ connected: true, phone: connectedPhone, qr: null });
+  }
+  const dataUrl = await getQRDataUrl();
+  if (!dataUrl) {
+    return res.json({ connected: false, qr: null, message: "Generando QR..." });
+  }
+  return res.json({ connected: false, qr: dataUrl });
+});
+
+// 🔓 Cerrar sesión y forzar QR nuevo
+app.post("/logout", (req, res) => {
+  try {
+    clearAuth();
+    if (sock) { try { sock.ev.removeAllListeners(); sock.ws.close(); } catch (e) {} }
+    sock = null;
+    latestQR = null;
+    connectedPhone = "";
+    isConnected = false;
+    setTimeout(() => startSock(), 1500);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || "error" });
+  }
 });
 
 // 🛡️ Graceful Shutdown

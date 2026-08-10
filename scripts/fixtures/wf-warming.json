@@ -1,0 +1,721 @@
+{
+ "updatedAt": "2026-08-04T23:05:24.793Z",
+ "createdAt": "2026-08-03T14:22:18.190Z",
+ "id": "8y9D3gwEyjhEbWA7",
+ "name": "EstudioVARq WorkTesting — WarmingAgent",
+ "description": null,
+ "active": true,
+ "isArchived": false,
+ "nodes": [
+  {
+   "parameters": {
+    "inputSource": "passthrough"
+   },
+   "name": "Execute Workflow Trigger",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    -600,
+    0
+   ],
+   "id": "af310c7d-56f1-4b9a-bbde-3fa96f84b0bc"
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "={{ $json.chatInput }}",
+    "options": {
+     "systemMessage": "=Sos Sofie del equipo de Estudio VArq — Arquitectura. Estás conversando por WhatsApp con un cliente potencial que quiere construir o remodelar.\n\nCONTEXTO DEL LEAD:\n- Nombre: {{ $json.lead_name || 'cliente' }}\n- Tipo de obra: {{ $json.lead_obra || '' }} | Vivienda: {{ $json.lead_vivienda || '' }}\n- Metros cuadrados: {{ $json.lead_m2 || '' }}\n- Zona: {{ $json.lead_zona || '' }} | Presupuesto: {{ $json.lead_presupuesto || '' }}\n- Hoy es: {{ $now }}\n\nOBJETIVO: Calentar al lead. Generar confianza, resolver dudas y objeciones, transmitir el valor del trabajo de Estudio VArq, y lograr que acepte coordinar una llamada de venta con un arquitecto de 30 minutos (sin compromiso).\n\nVOZ Y TONO: cálido, natural, rioplatense, empático. Mensajes BREVES de WhatsApp (2-4 líneas). Cero presión de venta; se trato cercano.\n\nBASE DE CONOCIMIENTO: usás el método de venta del curso del estudio (RAG). Cuando el cliente dude, objete o pregunte por qué avanzar, recuperá las técnicas del curso: cómo transmitir valor, el rbol de conversaciones, manejo de objeciones, presupuesto cerrado y evitar errores comunes.\n\nREGLAS:\n- Respondé siempre en primera persona como Sofía.\n- NUNCA inventes datos del lead, plazos ni precios. Si dudres, preguntá con sal.\n- No enviar enlaces de pago ni documentos. Si el cliente acepta la llamada, coordiná un horario y decile que lo vas a confirmar.\n- Si el cliente se dispersa, volvé con tono a la idea de coordinar la llamada.\n- Respondé SOLO el texto del mensaje, sin aclaraciones ni markdown.\n\n\nAGENDADO DE LA LLAMADA DE VENTA:\n- Cuando el cliente acepte coordinar la llamada de 30 minutos con un arquitecto, preguntale qué día y hora le quedan cómodos (proponé horarios en ventana laboral Lun-Vie 08-18 hs de Argentina si no sabe).\n- Antes de crear el evento, confirmá SIEMPRE con el cliente el día y la hora exactos.\n- Con el horario confirmado, usá la herramienta \"Agendar Llamada\" para crear el evento (duración 30 min, zona horaria America/Argentina/Buenos_Aires). Fecha de hoy (Buenos Aires): {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('dd/MM/yyyy HH:mm') }}.\n- Después de agendar, confirmá al cliente con el resumen: día, hora y que el arquitecto lo va a llamar a ese horario.\n- Nunca inventes un horario: si no está confirmado, seguí preguntando.\n",
+     "maxIterations": 15
+    }
+   },
+   "name": "AI Agent",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 3.1,
+   "position": [
+    -380,
+    0
+   ],
+   "onError": "continueErrorOutput",
+   "id": "5ace404a-d64b-46d4-a5f4-e5533d1e9956"
+  },
+  {
+   "parameters": {
+    "model": "openrouter/free",
+    "options": {}
+   },
+   "name": "OpenRouter Chat Model",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+   "typeVersion": 1,
+   "position": [
+    -600,
+    260
+   ],
+   "credentials": {
+    "openRouterApi": {
+     "id": "nI1oC1hKVLF0ysS3",
+     "name": "OpenRouter account"
+    }
+   },
+   "id": "adbd52b6-88bd-4c09-8b09-35893244937e"
+  },
+  {
+   "parameters": {
+    "sessionIdType": "customKey",
+    "sessionKey": "={{ $json.phone || $json.sessionId || 'test-user' }}",
+    "contextWindowLength": 50
+   },
+   "name": "Simple Memory",
+   "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+   "typeVersion": 1.4,
+   "position": [
+    -380,
+    340
+   ],
+   "id": "b5edcf9a-72b5-4fb3-9a63-464219806f11"
+  },
+  {
+   "parameters": {
+    "mode": "retrieve-as-tool",
+    "toolDescription": "Base de conocimiento del curso de venta de arquitectos de Estudio VArq (métodos M1-M3): transmitir valor, árbol de conversaciones con clientes, manejo de objeciones, presupuestos cerrados, errores comunes. Usala cuando el cliente dude, objete, pregunte porqué avanzar o de cero. Busca ejemplos concretos y hablá con autoridad.",
+    "pineconeIndex": {
+     "mode": "list",
+     "value": "estudiovarq-iweb",
+     "cachedResultName": "estudiovarq-iweb",
+     "__rl": true
+    },
+    "topK": 4,
+    "options": {
+     "pineconeNamespace": "estudiovarq-curso"
+    }
+   },
+   "name": "Pinecone Vector Store",
+   "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+   "typeVersion": 1.3,
+   "position": [
+    -600,
+    420
+   ],
+   "credentials": {
+    "pineconeApi": {
+     "id": "zJwflhAo7Ip9wSMb",
+     "name": "Pinecone account"
+    }
+   },
+   "id": "e558312c-8861-4e2e-ae05-9049e915f20d"
+  },
+  {
+   "parameters": {
+    "modelName": "Qwen/Qwen3-Embedding-0.6B"
+   },
+   "name": "Embeddings Qwen",
+   "type": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
+   "typeVersion": 1.2,
+   "position": [
+    -860,
+    420
+   ],
+   "credentials": {
+    "huggingFaceApi": {
+     "id": "tYYbK8M36tyAMvfz",
+     "name": "Hugging Face Access Token"
+    }
+   },
+   "id": "9628cf63-73b7-4885-9b53-53a31646bf63"
+  },
+  {
+   "parameters": {
+    "language": "javaScript",
+    "mode": "runOnceForAllItems",
+    "jsCode": "const out = $json.output;\nreturn [{ json: { phone: $json.phone, chatInput: $json.chatInput, reply: String(out || '') } }];"
+   },
+   "name": "Formatear Salida",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -160,
+    0
+   ],
+   "id": "ddf0026d-863e-4b80-85e9-0f9b22935519"
+  },
+  {
+   "parameters": {
+    "toolDescription": "Creá la llamada de venta de 30 minutos en el calendario de Estudio VArq cuando el cliente haya confirmado día y hora. Zona horaria del evento: America/Argentina/Buenos_Aires (offset -03:00). La duración es de 30 minutos (calculá el end = start + 30 min).",
+    "calendar": {
+     "__rl": true,
+     "mode": "list",
+     "value": "primary",
+     "cachedResultName": "Primary calendar",
+     "cachedResultUrl": ""
+    },
+    "start": "={{ $fromAI(\"start\", \"Fecha y hora de inicio del evento en ISO 8601 con offset -03:00 (America/Argentina/Buenos_Aires), ejemplo 2026-08-10T15:00:00-03:00\") }}",
+    "end": "={{ $fromAI(\"end\", \"Fecha y hora de fin del evento en ISO 8601 con offset -03:00 (30 minutos después del inicio)\") }}",
+    "additionalFields": {
+     "summary": "={{ $fromAI(\"summary\", \"Título del evento\", \"string\") }}",
+     "description": "={{ $fromAI(\"description\", \"Descripción: llamada de venta de 30 min con arquitecto de Estudio VArq\", \"string\") }}"
+    }
+   },
+   "name": "Agendar Llamada",
+   "type": "n8n-nodes-base.googleCalendarTool",
+   "typeVersion": 1.3,
+   "position": [
+    -380,
+    560
+   ],
+   "id": "gcal-tool-fase5-0001",
+   "credentials": {
+    "googleCalendarOAuth2Api": {
+     "id": "d4YauwT9uHxEtwxo",
+     "name": "Google Calendar account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "mode": "manual",
+    "includeOtherFields": true,
+    "assignments": {
+     "assignments": [
+      {
+       "id": "evt-step",
+       "name": "step",
+       "type": "string",
+       "value": "warming"
+      },
+      {
+       "id": "evt-phone-warm",
+       "name": "phone",
+       "type": "string",
+       "value": "={{ String($('Execute Workflow Trigger').first().json.phone) }}"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "094302ea-261d-44f1-9bdc-6b7a649c90bb",
+   "name": "Armar evento (warming)",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.5,
+   "position": [
+    -80,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "options": {
+     "waitForSubWorkflow": false
+    },
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "fMtZQG0f2sgv3SLq",
+     "cachedResultName": "EstudioVARq — Notificar CRM",
+     "cachedResultUrl": null
+    },
+    "workflowInputs": {
+     "mappingMode": "defineBelow",
+     "value": {},
+     "schema": []
+    }
+   },
+   "id": "4814b20f-bd7a-47cf-ab01-b93303905931",
+   "name": "Notificar CRM (warming)",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.3,
+   "position": [
+    0,
+    0
+   ],
+   "alwaysOutputData": true
+  }
+ ],
+ "connections": {
+  "Execute Workflow Trigger": {
+   "main": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "OpenRouter Chat Model": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Simple Memory": {
+   "ai_memory": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_memory",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Pinecone Vector Store": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Embeddings Qwen": {
+   "ai_embedding": [
+    [
+     {
+      "node": "Pinecone Vector Store",
+      "type": "ai_embedding",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Agent": {
+   "main": [
+    [
+     {
+      "node": "Formatear Salida",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Agendar Llamada": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Formatear Salida": {
+   "main": [
+    [
+     {
+      "node": "Armar evento (warming)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar evento (warming)": {
+   "main": [
+    [
+     {
+      "node": "Notificar CRM (warming)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": null,
+ "meta": null,
+ "nodeGroups": [],
+ "pinData": null,
+ "versionId": "0bf6440a-c79d-4898-889a-44e204719cca",
+ "activeVersionId": "0bf6440a-c79d-4898-889a-44e204719cca",
+ "versionCounter": 11,
+ "triggerCount": 0,
+ "sourceWorkflowId": null,
+ "shared": [
+  {
+   "updatedAt": "2026-08-03T14:22:18.192Z",
+   "createdAt": "2026-08-03T14:22:18.192Z",
+   "role": "workflow:owner",
+   "workflowId": "8y9D3gwEyjhEbWA7",
+   "projectId": "uya5deefUrhAOsVI",
+   "project": {
+    "updatedAt": "2026-07-15T17:18:53.756Z",
+    "createdAt": "2026-07-15T17:10:35.405Z",
+    "id": "uya5deefUrhAOsVI",
+    "name": "Facundo Demarco <facundod@iwebtecnology.com>",
+    "type": "personal",
+    "icon": null,
+    "description": null,
+    "customTelemetryTags": [],
+    "creatorId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   }
+  }
+ ],
+ "tags": [],
+ "activeVersion": {
+  "updatedAt": "2026-08-04T23:05:24.873Z",
+  "createdAt": "2026-08-04T23:05:24.873Z",
+  "versionId": "0bf6440a-c79d-4898-889a-44e204719cca",
+  "workflowId": "8y9D3gwEyjhEbWA7",
+  "nodes": [
+   {
+    "parameters": {
+     "inputSource": "passthrough"
+    },
+    "name": "Execute Workflow Trigger",
+    "type": "n8n-nodes-base.executeWorkflowTrigger",
+    "typeVersion": 1.2,
+    "position": [
+     -600,
+     0
+    ],
+    "id": "af310c7d-56f1-4b9a-bbde-3fa96f84b0bc"
+   },
+   {
+    "parameters": {
+     "promptType": "define",
+     "text": "={{ $json.chatInput }}",
+     "options": {
+      "systemMessage": "=Sos Sofie del equipo de Estudio VArq — Arquitectura. Estás conversando por WhatsApp con un cliente potencial que quiere construir o remodelar.\n\nCONTEXTO DEL LEAD:\n- Nombre: {{ $json.lead_name || 'cliente' }}\n- Tipo de obra: {{ $json.lead_obra || '' }} | Vivienda: {{ $json.lead_vivienda || '' }}\n- Metros cuadrados: {{ $json.lead_m2 || '' }}\n- Zona: {{ $json.lead_zona || '' }} | Presupuesto: {{ $json.lead_presupuesto || '' }}\n- Hoy es: {{ $now }}\n\nOBJETIVO: Calentar al lead. Generar confianza, resolver dudas y objeciones, transmitir el valor del trabajo de Estudio VArq, y lograr que acepte coordinar una llamada de venta con un arquitecto de 30 minutos (sin compromiso).\n\nVOZ Y TONO: cálido, natural, rioplatense, empático. Mensajes BREVES de WhatsApp (2-4 líneas). Cero presión de venta; se trato cercano.\n\nBASE DE CONOCIMIENTO: usás el método de venta del curso del estudio (RAG). Cuando el cliente dude, objete o pregunte por qué avanzar, recuperá las técnicas del curso: cómo transmitir valor, el rbol de conversaciones, manejo de objeciones, presupuesto cerrado y evitar errores comunes.\n\nREGLAS:\n- Respondé siempre en primera persona como Sofía.\n- NUNCA inventes datos del lead, plazos ni precios. Si dudres, preguntá con sal.\n- No enviar enlaces de pago ni documentos. Si el cliente acepta la llamada, coordiná un horario y decile que lo vas a confirmar.\n- Si el cliente se dispersa, volvé con tono a la idea de coordinar la llamada.\n- Respondé SOLO el texto del mensaje, sin aclaraciones ni markdown.\n\n\nAGENDADO DE LA LLAMADA DE VENTA:\n- Cuando el cliente acepte coordinar la llamada de 30 minutos con un arquitecto, preguntale qué día y hora le quedan cómodos (proponé horarios en ventana laboral Lun-Vie 08-18 hs de Argentina si no sabe).\n- Antes de crear el evento, confirmá SIEMPRE con el cliente el día y la hora exactos.\n- Con el horario confirmado, usá la herramienta \"Agendar Llamada\" para crear el evento (duración 30 min, zona horaria America/Argentina/Buenos_Aires). Fecha de hoy (Buenos Aires): {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('dd/MM/yyyy HH:mm') }}.\n- Después de agendar, confirmá al cliente con el resumen: día, hora y que el arquitecto lo va a llamar a ese horario.\n- Nunca inventes un horario: si no está confirmado, seguí preguntando.\n",
+      "maxIterations": 15
+     }
+    },
+    "name": "AI Agent",
+    "type": "@n8n/n8n-nodes-langchain.agent",
+    "typeVersion": 3.1,
+    "position": [
+     -380,
+     0
+    ],
+    "onError": "continueErrorOutput",
+    "id": "5ace404a-d64b-46d4-a5f4-e5533d1e9956"
+   },
+   {
+    "parameters": {
+     "model": "openrouter/free",
+     "options": {}
+    },
+    "name": "OpenRouter Chat Model",
+    "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+    "typeVersion": 1,
+    "position": [
+     -600,
+     260
+    ],
+    "credentials": {
+     "openRouterApi": {
+      "id": "nI1oC1hKVLF0ysS3",
+      "name": "OpenRouter account"
+     }
+    },
+    "id": "adbd52b6-88bd-4c09-8b09-35893244937e"
+   },
+   {
+    "parameters": {
+     "sessionIdType": "customKey",
+     "sessionKey": "={{ $json.phone || $json.sessionId || 'test-user' }}",
+     "contextWindowLength": 50
+    },
+    "name": "Simple Memory",
+    "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+    "typeVersion": 1.4,
+    "position": [
+     -380,
+     340
+    ],
+    "id": "b5edcf9a-72b5-4fb3-9a63-464219806f11"
+   },
+   {
+    "parameters": {
+     "mode": "retrieve-as-tool",
+     "toolDescription": "Base de conocimiento del curso de venta de arquitectos de Estudio VArq (métodos M1-M3): transmitir valor, árbol de conversaciones con clientes, manejo de objeciones, presupuestos cerrados, errores comunes. Usala cuando el cliente dude, objete, pregunte porqué avanzar o de cero. Busca ejemplos concretos y hablá con autoridad.",
+     "pineconeIndex": {
+      "mode": "list",
+      "value": "estudiovarq-iweb",
+      "cachedResultName": "estudiovarq-iweb",
+      "__rl": true
+     },
+     "topK": 4,
+     "options": {
+      "pineconeNamespace": "estudiovarq-curso"
+     }
+    },
+    "name": "Pinecone Vector Store",
+    "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+    "typeVersion": 1.3,
+    "position": [
+     -600,
+     420
+    ],
+    "credentials": {
+     "pineconeApi": {
+      "id": "zJwflhAo7Ip9wSMb",
+      "name": "Pinecone account"
+     }
+    },
+    "id": "e558312c-8861-4e2e-ae05-9049e915f20d"
+   },
+   {
+    "parameters": {
+     "modelName": "Qwen/Qwen3-Embedding-0.6B"
+    },
+    "name": "Embeddings Qwen",
+    "type": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
+    "typeVersion": 1.2,
+    "position": [
+     -860,
+     420
+    ],
+    "credentials": {
+     "huggingFaceApi": {
+      "id": "tYYbK8M36tyAMvfz",
+      "name": "Hugging Face Access Token"
+     }
+    },
+    "id": "9628cf63-73b7-4885-9b53-53a31646bf63"
+   },
+   {
+    "parameters": {
+     "language": "javaScript",
+     "mode": "runOnceForAllItems",
+     "jsCode": "const out = $json.output;\nreturn [{ json: { phone: $json.phone, chatInput: $json.chatInput, reply: String(out || '') } }];"
+    },
+    "name": "Formatear Salida",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+     -160,
+     0
+    ],
+    "id": "ddf0026d-863e-4b80-85e9-0f9b22935519"
+   },
+   {
+    "parameters": {
+     "toolDescription": "Creá la llamada de venta de 30 minutos en el calendario de Estudio VArq cuando el cliente haya confirmado día y hora. Zona horaria del evento: America/Argentina/Buenos_Aires (offset -03:00). La duración es de 30 minutos (calculá el end = start + 30 min).",
+     "calendar": {
+      "__rl": true,
+      "mode": "list",
+      "value": "primary",
+      "cachedResultName": "Primary calendar",
+      "cachedResultUrl": ""
+     },
+     "start": "={{ $fromAI(\"start\", \"Fecha y hora de inicio del evento en ISO 8601 con offset -03:00 (America/Argentina/Buenos_Aires), ejemplo 2026-08-10T15:00:00-03:00\") }}",
+     "end": "={{ $fromAI(\"end\", \"Fecha y hora de fin del evento en ISO 8601 con offset -03:00 (30 minutos después del inicio)\") }}",
+     "additionalFields": {
+      "summary": "={{ $fromAI(\"summary\", \"Título del evento\", \"string\") }}",
+      "description": "={{ $fromAI(\"description\", \"Descripción: llamada de venta de 30 min con arquitecto de Estudio VArq\", \"string\") }}"
+     }
+    },
+    "name": "Agendar Llamada",
+    "type": "n8n-nodes-base.googleCalendarTool",
+    "typeVersion": 1.3,
+    "position": [
+     -380,
+     560
+    ],
+    "id": "gcal-tool-fase5-0001",
+    "credentials": {
+     "googleCalendarOAuth2Api": {
+      "id": "d4YauwT9uHxEtwxo",
+      "name": "Google Calendar account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "mode": "manual",
+     "includeOtherFields": true,
+     "assignments": {
+      "assignments": [
+       {
+        "id": "evt-step",
+        "name": "step",
+        "type": "string",
+        "value": "warming"
+       },
+       {
+        "id": "evt-phone-warm",
+        "name": "phone",
+        "type": "string",
+        "value": "={{ String($('Execute Workflow Trigger').first().json.phone) }}"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "id": "094302ea-261d-44f1-9bdc-6b7a649c90bb",
+    "name": "Armar evento (warming)",
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.5,
+    "position": [
+     -80,
+     0
+    ]
+   },
+   {
+    "parameters": {
+     "options": {
+      "waitForSubWorkflow": false
+     },
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "fMtZQG0f2sgv3SLq",
+      "cachedResultName": "EstudioVARq — Notificar CRM",
+      "cachedResultUrl": null
+     },
+     "workflowInputs": {
+      "mappingMode": "defineBelow",
+      "value": {},
+      "schema": []
+     }
+    },
+    "id": "4814b20f-bd7a-47cf-ab01-b93303905931",
+    "name": "Notificar CRM (warming)",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "typeVersion": 1.3,
+    "position": [
+     0,
+     0
+    ],
+    "alwaysOutputData": true
+   }
+  ],
+  "connections": {
+   "Execute Workflow Trigger": {
+    "main": [
+     [
+      {
+       "node": "AI Agent",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "OpenRouter Chat Model": {
+    "ai_languageModel": [
+     [
+      {
+       "node": "AI Agent",
+       "type": "ai_languageModel",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Simple Memory": {
+    "ai_memory": [
+     [
+      {
+       "node": "AI Agent",
+       "type": "ai_memory",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Pinecone Vector Store": {
+    "ai_tool": [
+     [
+      {
+       "node": "AI Agent",
+       "type": "ai_tool",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Embeddings Qwen": {
+    "ai_embedding": [
+     [
+      {
+       "node": "Pinecone Vector Store",
+       "type": "ai_embedding",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "AI Agent": {
+    "main": [
+     [
+      {
+       "node": "Formatear Salida",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Agendar Llamada": {
+    "ai_tool": [
+     [
+      {
+       "node": "AI Agent",
+       "type": "ai_tool",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Formatear Salida": {
+    "main": [
+     [
+      {
+       "node": "Armar evento (warming)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Armar evento (warming)": {
+    "main": [
+     [
+      {
+       "node": "Notificar CRM (warming)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Facundo Demarco",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "workflowPublishHistory": [
+   {
+    "createdAt": "2026-08-04T23:05:25.642Z",
+    "id": 67,
+    "workflowId": "8y9D3gwEyjhEbWA7",
+    "versionId": "0bf6440a-c79d-4898-889a-44e204719cca",
+    "event": "activated",
+    "userId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   },
+   {
+    "createdAt": "2026-08-04T23:05:25.469Z",
+    "id": 66,
+    "workflowId": "8y9D3gwEyjhEbWA7",
+    "versionId": "0bf6440a-c79d-4898-889a-44e204719cca",
+    "event": "deactivated",
+    "userId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   }
+  ]
+ }
+}

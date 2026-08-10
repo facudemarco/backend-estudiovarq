@@ -1,0 +1,660 @@
+{
+ "updatedAt": "2026-08-07T02:34:26.229Z",
+ "createdAt": "2026-08-03T15:13:47.775Z",
+ "id": "sBkQNCRqYLwGZ70M",
+ "name": "EstudioVARq WorkTesting — Seguimientos",
+ "description": null,
+ "active": true,
+ "isArchived": false,
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "*/15 * * * *"
+      }
+     ]
+    }
+   },
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    -600,
+    0
+   ],
+   "id": "fc7d0c42-c29d-459d-acff-37190414ffbb"
+  },
+  {
+   "parameters": {
+    "method": "GET",
+    "url": "https://offline-doc-models-reproduced.trycloudflare.com/crm/leads-pending",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      },
+      {
+       "name": "X-Secret",
+       "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+      }
+     ]
+    },
+    "options": {
+     "retryOnFail": true,
+     "maxTries": 3,
+     "waitBetweenTries": 2000,
+     "splitIntoItems": true
+    }
+   },
+   "id": "sg-Leer Lea-0001-0001-0001-000000000001",
+   "name": "Leer Leads",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.4,
+   "position": [
+    -400,
+    0
+   ],
+   "onError": "continueErrorOutput",
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "lR6ya95Eh7j2TOEZ",
+     "name": "EstudioVARq Secret"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "language": "javaScript",
+    "mode": "runOnceForAllItems",
+    "jsCode": "const now = $now.setZone('America/Argentina/Buenos_Aires');\nconst weekday = now.weekday;\nconst hour = now.hour;\nconst laboral = (weekday >= 1 && weekday <= 5) && (hour >= 8 && hour < 18);\n\nconst CHAIN = {\n  '6h':  { next: '6h2',  delay: { hours: 6 } },\n  '6h2': { next: '6h3',  delay: { hours: 6 } },\n  '6h3': { next: '24h1', delay: { days: 1 } },\n  '24h1':{ next: '24h2', delay: { days: 1 } },\n  '24h2':{ next: '24h3', delay: { days: 1 } },\n  '24h3':{ next: '72h1', delay: { days: 3 } },\n  '72h1':{ next: '72h2', delay: { days: 1 } },\n  '72h2':{ next: '72h3', delay: { days: 1 } },\n  '72h3':{ next: '7d1',  delay: { days: 4 } },\n  '7d1': { next: '7d2',  delay: { days: 1 } },\n  '7d2': { next: '7d3',  delay: { days: 1 } },\n  '7d3': { next: '10d',  delay: { days: 3 } },\n  '10d': { next: 'm1',   delay: { months: 1 } },\n  'm1':  { next: 'm2',   delay: { months: 1 } },\n  'm2':  { next: 'm3',   delay: { months: 1 } },\n  'm3':  { next: 'm4',   delay: { months: 1 } },\n  'm4':  { next: 'm5',   delay: { months: 1 } },\n  'm5':  { next: 'm6',   delay: { months: 1 } },\n  'm6':  { next: null,   delay: null },\n};\n\nconst T = {\n  '6h':  'Hola {name}, ¿cómo estás? Pudiste ver mi mensaje anterior?',\n  '6h2': 'Con la información que me diste, ya podés dar el siguiente paso: organizarnos para que puedas ver tu casa terminada antes de construirla y saber cuánto saldría hacerla 🏡',\n  '6h3': '¿Querés que coordinemos? Es una reunión corta, sin compromiso, pero muy útil para ordenar ideas y tomar buenas decisiones desde el inicio',\n  '24h1':'Hola {name}, te escribo nuevamente porque realmente creo que esta reunión puede ayudarte mucho',\n  '24h2':'No es solo para hablar de metros cuadrados. Te cuento cómo organizarte económica y emocionalmente para que este proceso no se vuelva una carga',\n  '24h3':'Si te interesa, decime un horario que te quede cómodo y te agendo yo 📅',\n  '72h1':'Hola {name}, ¿cómo estás? No quiero insistir, pero muchas personas me dicen que esta charla les cambió totalmente la forma de encarar su casa',\n  '72h2':'En solo 30 minutos, te explico cómo ordenar prioridades, evitar errores comunes y encarar tu proyecto con más seguridad',\n  '72h3':'¿Te gustaría que coordinemos esta semana?',\n  '7d1': 'Hola {name}, ya pasó una semana desde que completaste el formulario. ¿Pudiste avanzar con algo de lo que tenías pensado?',\n  '7d2': 'Si todavía estás en esa etapa de dudas o de no saber por dónde arrancar, la llamada puede darte muchísima claridad',\n  '7d3': 'Estoy disponible esta semana, ¿querés que veamos un horario?',\n  '10d': 'Hola {name}.\\n\\nSé que esta llamada te puede ayudar mucho a encarar tu proyecto, pero no quiero insistirte. Si ahora no es el momento, está todo bien. Cuando quieras retomar, escribinos a este número y lo vemos juntos.',\n  'm1':  'Hola {name}, ¿cómo estás?\\n\\nAlgo que pocas personas saben al construir su casa es que el diseño puede hacerte ahorrar o gastar de más.\\n\\nPor ejemplo, la cantidad de metros cuadrados no es lo único que define el costo: pequeñas decisiones como el tipo de materiales, la distribución de los ambientes o la orientación de la casa pueden impactar fuerte en el presupuesto final.\\n\\nNosotros nos especializamos en optimizar el diseño para que no gastes de más sin necesidad.\\n\\nSi te interesa ver cómo podríamos hacerlo con tu proyecto, avisame y lo charlamos!',\n  'm2':  'Hola {name},\\n\\nMucha gente cuando empieza a construir comete el mismo error: arrancar sin tener un presupuesto detallado y bien armado.\\n\\nEl problema es que a mitad de obra aparecen costos imprevistos que pueden aumentar el gasto total hasta un 30%.\\n\\nPor eso, la mejor forma de evitar sorpresas es tener un diseño optimizado y un plan claro desde el primer día.\\n\\nSi todavía estás con la idea de construir, podemos ayudarte a hacerlo de la forma más eficiente posible. ¿Querés que lo charlemos?',\n  'm3':  'Hola {name},\\n\\nSeguro ya viste precios por metro cuadrado, pero la pregunta clave es: ¿cuánto te va a costar realmente tu casa?\\n\\nEl precio promedio del mercado es solo una referencia: el costo final depende de la distribución y el diseño de los espacios, la cantidad y calidad de los materiales, y la eficiencia en la construcción.\\n\\nNosotros nos enfocamos en optimizar todos estos factores para reducir costos sin afectar la calidad.\\n\\nSi querés asegurarte de que tu presupuesto esté bien ajustado antes de empezar, escribime y lo vemos!',\n  'm4':  'Hola {name},\\n\\nAlgo que mucha gente no tiene en cuenta cuando arranca su obra es que los sobrecostos pueden aparecer en cualquier etapa.\\n\\nLas 3 razones más comunes son:\\n❌ Cambios de último momento en el diseño.\\n❌ No tener un presupuesto detallado antes de empezar.\\n❌ Mal cálculo en materiales y mano de obra.\\n\\nPor eso, una buena planificación desde el principio te puede ahorrar tiempo, estrés y mucha plata.\\n\\nSi querés asegurarte de evitar estos problemas, avisame y lo charlamos!',\n  'm5':  'Hola {name},\\n\\nUno de los mayores dolores de cabeza al construir es que las obras suelen demorarse más de lo esperado.\\n\\n¿Por qué pasa esto?\\n🕑 Malas estimaciones en tiempos de obra.\\n🚧 Problemas con permisos y aprobaciones.\\n📉 Falta de planificación en el diseño y materiales.\\n\\nLo que hacemos en Estudio VArq es ayudarte a tener todo resuelto antes de empezar, para que la construcción no se vuelva un dolor de cabeza.\\n\\nSi querés asegurarte de que tu proyecto arranque y termine en tiempo, escribime y lo hablamos!',\n  'm6':  'Hola {name},\\n\\nHace un tiempo hablamos sobre tu proyecto. Si todavía estás con la idea de construir, nos encantaría ayudarte a planificarlo para que no gastes de más.\\n\\nSi te interesa que lo veamos juntos, escribime y lo coordinamos.\\n\\nSi no, no hay problema: cualquier cosa, sabés que podés contar con nosotros cuando lo necesites.\\n\\n¡Saludos! 😊',\n};\n\nconst out = [];\nfor (const it of $input.all()) { const RL = (it && it.json) ? it.json : it; const lead = RL;\n  const etapa = String(lead.etapa_seg || '');\n  const stage = CHAIN[etapa];\n  if (!stage) continue;\n  const status = String(lead.status || '');\n  if (status !== 'cualificado' && status !== 'no_cualificado') continue;\n  if (!lead.prox_seg_ts || new Date(lead.prox_seg_ts).getTime() > Date.now()) continue;\n  if (!laboral) continue;\n  const name = String(lead.name || '').trim();\n  const message = (T[etapa] || '').replace(/\\{name\\}/g, name || 'cliente');\n  if (!message) continue;\n  const sheet_update = {\n    etapa_seg: stage.next || '',\n    prox_seg_ts: stage.next ? $now.plus(stage.delay).toISO() : '',\n    ultimo_msg_ts: now.toISO(),\n  };\n  if (!stage.next) sheet_update.status = 'inactivo';\n  out.push({ json: { phone: String(lead.phone || ''), name, message, etapa_actual: etapa, sheet_update } });\n}\nreturn out;"
+   },
+   "name": "Evaluar Seguimientos",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -200,
+    0
+   ],
+   "id": "48d42321-9f9e-4bc5-9558-a76c527395c3"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+    "sendBody": true,
+    "contentType": "json",
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      },
+      {
+       "name": "X-Secret",
+       "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+      }
+     ]
+    },
+    "options": {
+     "retryOnFail": true,
+     "maxTries": 3,
+     "waitBetweenTries": 2000
+    }
+   },
+   "name": "Enviar Seguimiento",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.4,
+   "position": [
+    0,
+    0
+   ],
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "lR6ya95Eh7j2TOEZ",
+     "name": "EstudioVARq Secret"
+    }
+   },
+   "onError": "continueErrorOutput",
+   "id": "e8fc4435-7a63-465e-8933-dba7d5dc6d4d"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://offline-doc-models-reproduced.trycloudflare.com/crm/update-lead",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      },
+      {
+       "name": "X-Secret",
+       "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+      }
+     ]
+    },
+    "options": {
+     "retryOnFail": true,
+     "maxTries": 3,
+     "waitBetweenTries": 2000
+    },
+    "sendBody": true,
+    "contentType": "json",
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ phone: $json.phone, changes: $json.sheet_update }) }}"
+   },
+   "id": "sg-Actualiz-0001-0001-0001-000000000001",
+   "name": "Actualizar Etapa",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.4,
+   "position": [
+    200,
+    0
+   ],
+   "onError": "continueErrorOutput",
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "lR6ya95Eh7j2TOEZ",
+     "name": "EstudioVARq Secret"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "mode": "manual",
+    "includeOtherFields": true,
+    "assignments": {
+     "assignments": [
+      {
+       "id": "evt-step",
+       "name": "step",
+       "type": "string",
+       "value": "={{ $('Evaluar Seguimientos').item.json.etapa_actual }}"
+      },
+      {
+       "id": "evt-phone",
+       "name": "phone",
+       "type": "string",
+       "value": "={{ $('Evaluar Seguimientos').item.json.phone }}"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "2a607153-35b2-49df-86b8-710d33b23c70",
+   "name": "Armar evento (etapa)",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.5,
+   "position": [
+    60,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "options": {
+     "waitForSubWorkflow": false
+    },
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "fMtZQG0f2sgv3SLq",
+     "cachedResultName": "EstudioVARq — Notificar CRM",
+     "cachedResultUrl": null
+    },
+    "workflowInputs": {
+     "mappingMode": "defineBelow",
+     "value": {},
+     "schema": []
+    }
+   },
+   "id": "c472483a-41df-4107-994d-327f82410228",
+   "name": "Notificar CRM (etapa)",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.3,
+   "position": [
+    130,
+    80
+   ],
+   "alwaysOutputData": true
+  }
+ ],
+ "connections": {
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Leer Leads",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Leer Leads": {
+   "main": [
+    [
+     {
+      "node": "Evaluar Seguimientos",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Evaluar Seguimientos": {
+   "main": [
+    [
+     {
+      "node": "Enviar Seguimiento",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar Seguimiento": {
+   "main": [
+    [
+     {
+      "node": "Armar evento (etapa)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar evento (etapa)": {
+   "main": [
+    [
+     {
+      "node": "Notificar CRM (etapa)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Notificar CRM (etapa)": {
+   "main": [
+    [
+     {
+      "node": "Actualizar Etapa",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": {
+  "node:Schedule Trigger": {
+   "recurrenceRules": [
+    null
+   ],
+   "recurrenceRuleSignatures": [
+    null
+   ]
+  }
+ },
+ "meta": null,
+ "nodeGroups": [],
+ "pinData": null,
+ "versionId": "157d758c-b451-49bf-9901-20d60bbb154e",
+ "activeVersionId": "157d758c-b451-49bf-9901-20d60bbb154e",
+ "versionCounter": 12,
+ "triggerCount": 1,
+ "sourceWorkflowId": null,
+ "shared": [
+  {
+   "updatedAt": "2026-08-03T15:13:47.777Z",
+   "createdAt": "2026-08-03T15:13:47.777Z",
+   "role": "workflow:owner",
+   "workflowId": "sBkQNCRqYLwGZ70M",
+   "projectId": "uya5deefUrhAOsVI",
+   "project": {
+    "updatedAt": "2026-07-15T17:18:53.756Z",
+    "createdAt": "2026-07-15T17:10:35.405Z",
+    "id": "uya5deefUrhAOsVI",
+    "name": "Facundo Demarco <facundod@iwebtecnology.com>",
+    "type": "personal",
+    "icon": null,
+    "description": null,
+    "customTelemetryTags": [],
+    "creatorId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   }
+  }
+ ],
+ "tags": [],
+ "activeVersion": {
+  "updatedAt": "2026-08-07T02:34:26.265Z",
+  "createdAt": "2026-08-07T02:34:26.265Z",
+  "versionId": "157d758c-b451-49bf-9901-20d60bbb154e",
+  "workflowId": "sBkQNCRqYLwGZ70M",
+  "nodes": [
+   {
+    "parameters": {
+     "rule": {
+      "interval": [
+       {
+        "field": "cronExpression",
+        "expression": "*/15 * * * *"
+       }
+      ]
+     }
+    },
+    "name": "Schedule Trigger",
+    "type": "n8n-nodes-base.scheduleTrigger",
+    "typeVersion": 1.2,
+    "position": [
+     -600,
+     0
+    ],
+    "id": "fc7d0c42-c29d-459d-acff-37190414ffbb"
+   },
+   {
+    "parameters": {
+     "method": "GET",
+     "url": "https://offline-doc-models-reproduced.trycloudflare.com/crm/leads-pending",
+     "sendHeaders": true,
+     "headerParameters": {
+      "parameters": [
+       {
+        "name": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "name": "X-Secret",
+        "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+       }
+      ]
+     },
+     "options": {
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "splitIntoItems": true
+     }
+    },
+    "id": "sg-Leer Lea-0001-0001-0001-000000000001",
+    "name": "Leer Leads",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.4,
+    "position": [
+     -400,
+     0
+    ],
+    "onError": "continueErrorOutput",
+    "credentials": {
+     "httpHeaderAuth": {
+      "id": "lR6ya95Eh7j2TOEZ",
+      "name": "EstudioVARq Secret"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "language": "javaScript",
+     "mode": "runOnceForAllItems",
+     "jsCode": "const now = $now.setZone('America/Argentina/Buenos_Aires');\nconst weekday = now.weekday;\nconst hour = now.hour;\nconst laboral = (weekday >= 1 && weekday <= 5) && (hour >= 8 && hour < 18);\n\nconst CHAIN = {\n  '6h':  { next: '6h2',  delay: { hours: 6 } },\n  '6h2': { next: '6h3',  delay: { hours: 6 } },\n  '6h3': { next: '24h1', delay: { days: 1 } },\n  '24h1':{ next: '24h2', delay: { days: 1 } },\n  '24h2':{ next: '24h3', delay: { days: 1 } },\n  '24h3':{ next: '72h1', delay: { days: 3 } },\n  '72h1':{ next: '72h2', delay: { days: 1 } },\n  '72h2':{ next: '72h3', delay: { days: 1 } },\n  '72h3':{ next: '7d1',  delay: { days: 4 } },\n  '7d1': { next: '7d2',  delay: { days: 1 } },\n  '7d2': { next: '7d3',  delay: { days: 1 } },\n  '7d3': { next: '10d',  delay: { days: 3 } },\n  '10d': { next: 'm1',   delay: { months: 1 } },\n  'm1':  { next: 'm2',   delay: { months: 1 } },\n  'm2':  { next: 'm3',   delay: { months: 1 } },\n  'm3':  { next: 'm4',   delay: { months: 1 } },\n  'm4':  { next: 'm5',   delay: { months: 1 } },\n  'm5':  { next: 'm6',   delay: { months: 1 } },\n  'm6':  { next: null,   delay: null },\n};\n\nconst T = {\n  '6h':  'Hola {name}, ¿cómo estás? Pudiste ver mi mensaje anterior?',\n  '6h2': 'Con la información que me diste, ya podés dar el siguiente paso: organizarnos para que puedas ver tu casa terminada antes de construirla y saber cuánto saldría hacerla 🏡',\n  '6h3': '¿Querés que coordinemos? Es una reunión corta, sin compromiso, pero muy útil para ordenar ideas y tomar buenas decisiones desde el inicio',\n  '24h1':'Hola {name}, te escribo nuevamente porque realmente creo que esta reunión puede ayudarte mucho',\n  '24h2':'No es solo para hablar de metros cuadrados. Te cuento cómo organizarte económica y emocionalmente para que este proceso no se vuelva una carga',\n  '24h3':'Si te interesa, decime un horario que te quede cómodo y te agendo yo 📅',\n  '72h1':'Hola {name}, ¿cómo estás? No quiero insistir, pero muchas personas me dicen que esta charla les cambió totalmente la forma de encarar su casa',\n  '72h2':'En solo 30 minutos, te explico cómo ordenar prioridades, evitar errores comunes y encarar tu proyecto con más seguridad',\n  '72h3':'¿Te gustaría que coordinemos esta semana?',\n  '7d1': 'Hola {name}, ya pasó una semana desde que completaste el formulario. ¿Pudiste avanzar con algo de lo que tenías pensado?',\n  '7d2': 'Si todavía estás en esa etapa de dudas o de no saber por dónde arrancar, la llamada puede darte muchísima claridad',\n  '7d3': 'Estoy disponible esta semana, ¿querés que veamos un horario?',\n  '10d': 'Hola {name}.\\n\\nSé que esta llamada te puede ayudar mucho a encarar tu proyecto, pero no quiero insistirte. Si ahora no es el momento, está todo bien. Cuando quieras retomar, escribinos a este número y lo vemos juntos.',\n  'm1':  'Hola {name}, ¿cómo estás?\\n\\nAlgo que pocas personas saben al construir su casa es que el diseño puede hacerte ahorrar o gastar de más.\\n\\nPor ejemplo, la cantidad de metros cuadrados no es lo único que define el costo: pequeñas decisiones como el tipo de materiales, la distribución de los ambientes o la orientación de la casa pueden impactar fuerte en el presupuesto final.\\n\\nNosotros nos especializamos en optimizar el diseño para que no gastes de más sin necesidad.\\n\\nSi te interesa ver cómo podríamos hacerlo con tu proyecto, avisame y lo charlamos!',\n  'm2':  'Hola {name},\\n\\nMucha gente cuando empieza a construir comete el mismo error: arrancar sin tener un presupuesto detallado y bien armado.\\n\\nEl problema es que a mitad de obra aparecen costos imprevistos que pueden aumentar el gasto total hasta un 30%.\\n\\nPor eso, la mejor forma de evitar sorpresas es tener un diseño optimizado y un plan claro desde el primer día.\\n\\nSi todavía estás con la idea de construir, podemos ayudarte a hacerlo de la forma más eficiente posible. ¿Querés que lo charlemos?',\n  'm3':  'Hola {name},\\n\\nSeguro ya viste precios por metro cuadrado, pero la pregunta clave es: ¿cuánto te va a costar realmente tu casa?\\n\\nEl precio promedio del mercado es solo una referencia: el costo final depende de la distribución y el diseño de los espacios, la cantidad y calidad de los materiales, y la eficiencia en la construcción.\\n\\nNosotros nos enfocamos en optimizar todos estos factores para reducir costos sin afectar la calidad.\\n\\nSi querés asegurarte de que tu presupuesto esté bien ajustado antes de empezar, escribime y lo vemos!',\n  'm4':  'Hola {name},\\n\\nAlgo que mucha gente no tiene en cuenta cuando arranca su obra es que los sobrecostos pueden aparecer en cualquier etapa.\\n\\nLas 3 razones más comunes son:\\n❌ Cambios de último momento en el diseño.\\n❌ No tener un presupuesto detallado antes de empezar.\\n❌ Mal cálculo en materiales y mano de obra.\\n\\nPor eso, una buena planificación desde el principio te puede ahorrar tiempo, estrés y mucha plata.\\n\\nSi querés asegurarte de evitar estos problemas, avisame y lo charlamos!',\n  'm5':  'Hola {name},\\n\\nUno de los mayores dolores de cabeza al construir es que las obras suelen demorarse más de lo esperado.\\n\\n¿Por qué pasa esto?\\n🕑 Malas estimaciones en tiempos de obra.\\n🚧 Problemas con permisos y aprobaciones.\\n📉 Falta de planificación en el diseño y materiales.\\n\\nLo que hacemos en Estudio VArq es ayudarte a tener todo resuelto antes de empezar, para que la construcción no se vuelva un dolor de cabeza.\\n\\nSi querés asegurarte de que tu proyecto arranque y termine en tiempo, escribime y lo hablamos!',\n  'm6':  'Hola {name},\\n\\nHace un tiempo hablamos sobre tu proyecto. Si todavía estás con la idea de construir, nos encantaría ayudarte a planificarlo para que no gastes de más.\\n\\nSi te interesa que lo veamos juntos, escribime y lo coordinamos.\\n\\nSi no, no hay problema: cualquier cosa, sabés que podés contar con nosotros cuando lo necesites.\\n\\n¡Saludos! 😊',\n};\n\nconst out = [];\nfor (const lead of $input.all()) {\n  const etapa = String(lead.etapa_seg || '');\n  const stage = CHAIN[etapa];\n  if (!stage) continue;\n  const status = String(lead.status || '');\n  if (status !== 'cualificado' && status !== 'no_cualificado') continue;\n  if (!lead.prox_seg_ts || new Date(lead.prox_seg_ts).getTime() > Date.now()) continue;\n  if (!laboral) continue;\n  const name = String(lead.name || '').trim();\n  const message = (T[etapa] || '').replace(/\\{name\\}/g, name || 'cliente');\n  if (!message) continue;\n  const sheet_update = {\n    etapa_seg: stage.next || '',\n    prox_seg_ts: stage.next ? $now.plus(stage.delay).toISO() : '',\n    ultimo_msg_ts: now.toISO(),\n  };\n  if (!stage.next) sheet_update.status = 'inactivo';\n  out.push({ json: { phone: String(lead.phone || ''), name, message, etapa_actual: etapa, sheet_update } });\n}\nreturn out;"
+    },
+    "name": "Evaluar Seguimientos",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+     -200,
+     0
+    ],
+    "id": "48d42321-9f9e-4bc5-9558-a76c527395c3"
+   },
+   {
+    "parameters": {
+     "method": "POST",
+     "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+     "sendBody": true,
+     "contentType": "json",
+     "specifyBody": "json",
+     "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+     "sendHeaders": true,
+     "headerParameters": {
+      "parameters": [
+       {
+        "name": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "name": "X-Secret",
+        "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+       }
+      ]
+     },
+     "options": {
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+     }
+    },
+    "name": "Enviar Seguimiento",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.4,
+    "position": [
+     0,
+     0
+    ],
+    "credentials": {
+     "httpHeaderAuth": {
+      "id": "lR6ya95Eh7j2TOEZ",
+      "name": "EstudioVARq Secret"
+     }
+    },
+    "onError": "continueErrorOutput",
+    "id": "e8fc4435-7a63-465e-8933-dba7d5dc6d4d"
+   },
+   {
+    "parameters": {
+     "method": "POST",
+     "url": "https://offline-doc-models-reproduced.trycloudflare.com/crm/update-lead",
+     "sendHeaders": true,
+     "headerParameters": {
+      "parameters": [
+       {
+        "name": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "name": "X-Secret",
+        "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+       }
+      ]
+     },
+     "options": {
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+     },
+     "sendBody": true,
+     "contentType": "json",
+     "specifyBody": "json",
+     "jsonBody": "={{ JSON.stringify({ phone: $json.phone, changes: $json.sheet_update }) }}"
+    },
+    "id": "sg-Actualiz-0001-0001-0001-000000000001",
+    "name": "Actualizar Etapa",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.4,
+    "position": [
+     200,
+     0
+    ],
+    "onError": "continueErrorOutput",
+    "credentials": {
+     "httpHeaderAuth": {
+      "id": "lR6ya95Eh7j2TOEZ",
+      "name": "EstudioVARq Secret"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "mode": "manual",
+     "includeOtherFields": true,
+     "assignments": {
+      "assignments": [
+       {
+        "id": "evt-step",
+        "name": "step",
+        "type": "string",
+        "value": "={{ $('Evaluar Seguimientos').item.json.etapa_actual }}"
+       },
+       {
+        "id": "evt-phone",
+        "name": "phone",
+        "type": "string",
+        "value": "={{ $('Evaluar Seguimientos').item.json.phone }}"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "id": "2a607153-35b2-49df-86b8-710d33b23c70",
+    "name": "Armar evento (etapa)",
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.5,
+    "position": [
+     60,
+     0
+    ]
+   },
+   {
+    "parameters": {
+     "options": {
+      "waitForSubWorkflow": false
+     },
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "fMtZQG0f2sgv3SLq",
+      "cachedResultName": "EstudioVARq — Notificar CRM",
+      "cachedResultUrl": null
+     },
+     "workflowInputs": {
+      "mappingMode": "defineBelow",
+      "value": {},
+      "schema": []
+     }
+    },
+    "id": "c472483a-41df-4107-994d-327f82410228",
+    "name": "Notificar CRM (etapa)",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "typeVersion": 1.3,
+    "position": [
+     130,
+     80
+    ],
+    "alwaysOutputData": true
+   }
+  ],
+  "connections": {
+   "Schedule Trigger": {
+    "main": [
+     [
+      {
+       "node": "Leer Leads",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Leer Leads": {
+    "main": [
+     [
+      {
+       "node": "Evaluar Seguimientos",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Evaluar Seguimientos": {
+    "main": [
+     [
+      {
+       "node": "Enviar Seguimiento",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Enviar Seguimiento": {
+    "main": [
+     [
+      {
+       "node": "Armar evento (etapa)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Armar evento (etapa)": {
+    "main": [
+     [
+      {
+       "node": "Notificar CRM (etapa)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Notificar CRM (etapa)": {
+    "main": [
+     [
+      {
+       "node": "Actualizar Etapa",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Facundo Demarco",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "workflowPublishHistory": [
+   {
+    "createdAt": "2026-08-07T02:34:26.416Z",
+    "id": 128,
+    "workflowId": "sBkQNCRqYLwGZ70M",
+    "versionId": "157d758c-b451-49bf-9901-20d60bbb154e",
+    "event": "activated",
+    "userId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   },
+   {
+    "createdAt": "2026-08-07T02:34:26.369Z",
+    "id": 127,
+    "workflowId": "sBkQNCRqYLwGZ70M",
+    "versionId": "157d758c-b451-49bf-9901-20d60bbb154e",
+    "event": "deactivated",
+    "userId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   }
+  ]
+ }
+}

@@ -1,0 +1,1406 @@
+{
+ "updatedAt": "2026-08-05T13:21:30.579Z",
+ "createdAt": "2026-08-03T15:13:47.775Z",
+ "id": "sBkQNCRqYLwGZ70M",
+ "name": "EstudioVARq WorkTesting — Seguimientos",
+ "description": null,
+ "active": true,
+ "isArchived": false,
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "*/15 * * * *"
+      }
+     ]
+    }
+   },
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    -600,
+    0
+   ],
+   "id": "fc7d0c42-c29d-459d-acff-37190414ffbb"
+  },
+  {
+   "parameters": {
+    "resource": "sheet",
+    "operation": "read",
+    "documentId": {
+     "mode": "id",
+     "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+    },
+    "sheetName": {
+     "mode": "name",
+     "value": "Leads"
+    },
+    "returnAll": true,
+    "options": {
+     "dataLocationOnSheet": {
+      "values": {
+       "rangeDefinition": "detectAutomatically"
+      }
+     }
+    }
+   },
+   "name": "Leer Leads",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.7,
+   "position": [
+    -400,
+    0
+   ],
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "VY8mExbW6awFhxWX",
+     "name": "Google Sheets account"
+    }
+   },
+   "onError": "continueErrorOutput",
+   "id": "ec17d1b4-31c1-4f98-bbd7-c3a51a814ac0"
+  },
+  {
+   "parameters": {
+    "language": "javaScript",
+    "mode": "runOnceForAllItems",
+    "jsCode": "const now = $now.setZone('America/Argentina/Buenos_Aires');\nconst weekday = now.weekday;\nconst hour = now.hour;\nconst laboral = (weekday >= 1 && weekday <= 5) && (hour >= 8 && hour <= 17);\n\nconst CHAIN = {\n  '6h':  { next: '6h2',  delay: { hours: 6 } },\n  '6h2': { next: '6h3',  delay: { hours: 6 } },\n  '6h3': { next: '24h1', delay: { days: 1 } },\n  '24h1':{ next: '24h2', delay: { days: 1 } },\n  '24h2':{ next: '24h3', delay: { days: 1 } },\n  '24h3':{ next: '72h1', delay: { days: 3 } },\n  '72h1':{ next: '72h2', delay: { days: 1 } },\n  '72h2':{ next: '72h3', delay: { days: 1 } },\n  '72h3':{ next: '7d1',  delay: { days: 4 } },\n  '7d1': { next: '7d2',  delay: { days: 1 } },\n  '7d2': { next: '7d3',  delay: { days: 1 } },\n  '7d3': { next: '10d',  delay: { days: 3 } },\n  '10d': { next: 'm1',   delay: { months: 1 } },\n  'm1':  { next: 'm2',   delay: { months: 1 } },\n  'm2':  { next: 'm3',   delay: { months: 1 } },\n  'm3':  { next: 'm4',   delay: { months: 1 } },\n  'm4':  { next: 'm5',   delay: { months: 1 } },\n  'm5':  { next: 'm6',   delay: { months: 1 } },\n  'm6':  { next: null,   delay: null },\n};\n\nconst T = {\n  '6h':  'Hola {name}, ¿cómo estás? Pudiste ver mi mensaje anterior?',\n  '6h2': 'Con la información que me diste, ya podés dar el siguiente paso: organizarnos para que puedas ver tu casa terminada antes de construirla y saber cuánto saldría hacerla 🏡',\n  '6h3': '¿Querés que coordinemos? Es una reunión corta, sin compromiso, pero muy útil para ordenar ideas y tomar buenas decisiones desde el inicio',\n  '24h1':'Hola {name}, te escribo nuevamente porque realmente creo que esta reunión puede ayudarte mucho',\n  '24h2':'No es solo para hablar de metros cuadrados. Te cuento cómo organizarte económica y emocionalmente para que este proceso no se vuelva una carga',\n  '24h3':'Si te interesa, decime un horario que te quede cómodo y te agendo yo 📅',\n  '72h1':'Hola {name}, ¿cómo estás? No quiero insistir, pero muchas personas me dicen que esta charla les cambió totalmente la forma de encarar su casa',\n  '72h2':'En solo 30 minutos, te explico cómo ordenar prioridades, evitar errores comunes y encarar tu proyecto con más seguridad',\n  '72h3':'¿Te gustaría que coordinemos esta semana?',\n  '7d1': 'Hola {name}, ya pasó una semana desde que completaste el formulario. ¿Pudiste avanzar con algo de lo que tenías pensado?',\n  '7d2': 'Si todavía estás en esa etapa de dudas o de no saber por dónde arrancar, la llamada puede darte muchísima claridad',\n  '7d3': 'Estoy disponible esta semana, ¿querés que veamos un horario?',\n  '10d': 'Hola {name}.\\n\\nSé que esta llamada te puede ayudar mucho a encarar tu proyecto, pero no quiero insistirte. Si ahora no es el momento, está todo bien. Cuando quieras retomar, escribinos a este número y lo vemos juntos.',\n  'm1':  'Hola {name}, ¿cómo estás?\\n\\nAlgo que pocas personas saben al construir su casa es que el diseño puede hacerte ahorrar o gastar de más.\\n\\nPor ejemplo, la cantidad de metros cuadrados no es lo único que define el costo: pequeñas decisiones como el tipo de materiales, la distribución de los ambientes o la orientación de la casa pueden impactar fuerte en el presupuesto final.\\n\\nNosotros nos especializamos en optimizar el diseño para que no gastes de más sin necesidad.\\n\\nSi te interesa ver cómo podríamos hacerlo con tu proyecto, avisame y lo charlamos!',\n  'm2':  'Hola {name},\\n\\nMucha gente cuando empieza a construir comete el mismo error: arrancar sin tener un presupuesto detallado y bien armado.\\n\\nEl problema es que a mitad de obra aparecen costos imprevistos que pueden aumentar el gasto total hasta un 30%.\\n\\nPor eso, la mejor forma de evitar sorpresas es tener un diseño optimizado y un plan claro desde el primer día.\\n\\nSi todavía estás con la idea de construir, podemos ayudarte a hacerlo de la forma más eficiente posible. ¿Querés que lo charlemos?',\n  'm3':  'Hola {name},\\n\\nSeguro ya viste precios por metro cuadrado, pero la pregunta clave es: ¿cuánto te va a costar realmente tu casa?\\n\\nEl precio promedio del mercado es solo una referencia: el costo final depende de la distribución y el diseño de los espacios, la cantidad y calidad de los materiales, y la eficiencia en la construcción.\\n\\nNosotros nos enfocamos en optimizar todos estos factores para reducir costos sin afectar la calidad.\\n\\nSi querés asegurarte de que tu presupuesto esté bien ajustado antes de empezar, escribime y lo vemos!',\n  'm4':  'Hola {name},\\n\\nAlgo que mucha gente no tiene en cuenta cuando arranca su obra es que los sobrecostos pueden aparecer en cualquier etapa.\\n\\nLas 3 razones más comunes son:\\n❌ Cambios de último momento en el diseño.\\n❌ No tener un presupuesto detallado antes de empezar.\\n❌ Mal cálculo en materiales y mano de obra.\\n\\nPor eso, una buena planificación desde el principio te puede ahorrar tiempo, estrés y mucha plata.\\n\\nSi querés asegurarte de evitar estos problemas, avisame y lo charlamos!',\n  'm5':  'Hola {name},\\n\\nUno de los mayores dolores de cabeza al construir es que las obras suelen demorarse más de lo esperado.\\n\\n¿Por qué pasa esto?\\n🕑 Malas estimaciones en tiempos de obra.\\n🚧 Problemas con permisos y aprobaciones.\\n📉 Falta de planificación en el diseño y materiales.\\n\\nLo que hacemos en Estudio VArq es ayudarte a tener todo resuelto antes de empezar, para que la construcción no se vuelva un dolor de cabeza.\\n\\nSi querés asegurarte de que tu proyecto arranque y termine en tiempo, escribime y lo hablamos!',\n  'm6':  'Hola {name},\\n\\nHace un tiempo hablamos sobre tu proyecto. Si todavía estás con la idea de construir, nos encantaría ayudarte a planificarlo para que no gastes de más.\\n\\nSi te interesa que lo veamos juntos, escribime y lo coordinamos.\\n\\nSi no, no hay problema: cualquier cosa, sabés que podés contar con nosotros cuando lo necesites.\\n\\n¡Saludos! 😊',\n};\n\nconst out = [];\nfor (const lead of $input.all()) {\n  const etapa = String(lead.etapa_seg || '');\n  const stage = CHAIN[etapa];\n  if (!stage) continue;\n  const status = String(lead.status || '');\n  if (status !== 'cualificado' && status !== 'no_cualificado') continue;\n  if (!lead.prox_seg_ts || new Date(lead.prox_seg_ts).getTime() > Date.now()) continue;\n  if (!laboral) continue;\n  const name = String(lead.name || '').trim();\n  const message = (T[etapa] || '').replace(/\\{name\\}/g, name || 'cliente');\n  if (!message) continue;\n  const sheet_update = {\n    etapa_seg: stage.next || '',\n    prox_seg_ts: stage.next ? $now.plus(stage.delay).toISO() : '',\n    ultimo_msg_ts: now.toISO(),\n  };\n  if (!stage.next) sheet_update.status = 'inactivo';\n  out.push({ json: { phone: String(lead.phone || ''), name, message, etapa_actual: etapa, sheet_update } });\n}\nreturn out;"
+   },
+   "name": "Evaluar Seguimientos",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -200,
+    0
+   ],
+   "id": "48d42321-9f9e-4bc5-9558-a76c527395c3"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+    "sendBody": true,
+    "contentType": "json",
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      },
+      {
+       "name": "X-Secret",
+       "value": "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq"
+      }
+     ]
+    },
+    "options": {
+     "retryOnFail": true,
+     "maxTries": 3,
+     "waitBetweenTries": 2000
+    }
+   },
+   "name": "Enviar Seguimiento",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.4,
+   "position": [
+    0,
+    0
+   ],
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "lR6ya95Eh7j2TOEZ",
+     "name": "EstudioVARq Secret"
+    }
+   },
+   "onError": "continueErrorOutput",
+   "id": "e8fc4435-7a63-465e-8933-dba7d5dc6d4d"
+  },
+  {
+   "parameters": {
+    "resource": "sheet",
+    "operation": "appendOrUpdate",
+    "documentId": {
+     "mode": "id",
+     "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+    },
+    "sheetName": {
+     "mode": "name",
+     "value": "Leads"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": "={{ Object.assign({}, $json.sheet_update, { lead_id: $json.lead_id }) }}",
+     "matchingColumns": [
+      "lead_id"
+     ],
+     "schema": [
+      {
+       "id": "lead_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lead_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "phone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "phone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "name",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "name",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "lastName",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "lastName",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "email",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "email",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "totalsM2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "totalsM2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "address",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "address",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "anotherPlace",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "anotherPlace",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "bathroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "bathroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "diningRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "diningRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "kitchen",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "kitchen",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "livingRoom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "livingRoom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "garage",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "garage",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "mainBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "mainBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "secondBedroom",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "secondBedroom",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "plants",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "plants",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "startDate",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "startDate",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "zone",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "zone",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "comments",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "comments",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "source",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "source",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "status",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "status",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "question_index",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "question_index",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "cualificado",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cualificado",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "razon_no_cual",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "razon_no_cual",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "etapa_seg",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "etapa_seg",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "prox_seg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "prox_seg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "ultimo_msg_ts",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "ultimo_msg_ts",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "calendar_event_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "calendar_event_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "notas",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "notas",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q1",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q1",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q2",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q2",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q3",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q3",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q4",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q4",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q5",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q5",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q6",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q6",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q7",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q7",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q8",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q8",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "q9",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "q9",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ]
+    },
+    "options": {}
+   },
+   "name": "Actualizar Etapa",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.7,
+   "position": [
+    200,
+    0
+   ],
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "VY8mExbW6awFhxWX",
+     "name": "Google Sheets account"
+    }
+   },
+   "onError": "continueErrorOutput",
+   "id": "602cbd07-732f-4887-9140-12d462f6208f"
+  },
+  {
+   "parameters": {
+    "mode": "manual",
+    "includeOtherFields": true,
+    "assignments": {
+     "assignments": [
+      {
+       "id": "evt-step",
+       "name": "step",
+       "type": "string",
+       "value": "={{ $('Evaluar Seguimientos').item.json.etapa_actual }}"
+      },
+      {
+       "id": "evt-phone",
+       "name": "phone",
+       "type": "string",
+       "value": "={{ $('Evaluar Seguimientos').item.json.phone }}"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "2a607153-35b2-49df-86b8-710d33b23c70",
+   "name": "Armar evento (etapa)",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.5,
+   "position": [
+    60,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "options": {
+     "waitForSubWorkflow": false
+    },
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "fMtZQG0f2sgv3SLq",
+     "cachedResultName": "EstudioVARq — Notificar CRM",
+     "cachedResultUrl": null
+    },
+    "workflowInputs": {
+     "mappingMode": "defineBelow",
+     "value": {},
+     "schema": []
+    }
+   },
+   "id": "c472483a-41df-4107-994d-327f82410228",
+   "name": "Notificar CRM (etapa)",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.3,
+   "position": [
+    130,
+    80
+   ],
+   "alwaysOutputData": true
+  }
+ ],
+ "connections": {
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Leer Leads",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Leer Leads": {
+   "main": [
+    [
+     {
+      "node": "Evaluar Seguimientos",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Evaluar Seguimientos": {
+   "main": [
+    [
+     {
+      "node": "Enviar Seguimiento",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar Seguimiento": {
+   "main": [
+    [
+     {
+      "node": "Armar evento (etapa)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Armar evento (etapa)": {
+   "main": [
+    [
+     {
+      "node": "Notificar CRM (etapa)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Notificar CRM (etapa)": {
+   "main": [
+    [
+     {
+      "node": "Actualizar Etapa",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": {
+  "node:Schedule Trigger": {
+   "recurrenceRules": [
+    null
+   ],
+   "recurrenceRuleSignatures": [
+    null
+   ]
+  }
+ },
+ "meta": null,
+ "nodeGroups": [],
+ "pinData": null,
+ "versionId": "cb6cf2f4-b4e6-4088-83ca-299d6014b3cb",
+ "activeVersionId": "cb6cf2f4-b4e6-4088-83ca-299d6014b3cb",
+ "versionCounter": 9,
+ "triggerCount": 1,
+ "sourceWorkflowId": null,
+ "shared": [
+  {
+   "updatedAt": "2026-08-03T15:13:47.777Z",
+   "createdAt": "2026-08-03T15:13:47.777Z",
+   "role": "workflow:owner",
+   "workflowId": "sBkQNCRqYLwGZ70M",
+   "projectId": "uya5deefUrhAOsVI",
+   "project": {
+    "updatedAt": "2026-07-15T17:18:53.756Z",
+    "createdAt": "2026-07-15T17:10:35.405Z",
+    "id": "uya5deefUrhAOsVI",
+    "name": "Facundo Demarco <facundod@iwebtecnology.com>",
+    "type": "personal",
+    "icon": null,
+    "description": null,
+    "customTelemetryTags": [],
+    "creatorId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   }
+  }
+ ],
+ "tags": [],
+ "activeVersion": {
+  "updatedAt": "2026-08-05T13:21:30.579Z",
+  "createdAt": "2026-08-05T13:21:30.579Z",
+  "versionId": "cb6cf2f4-b4e6-4088-83ca-299d6014b3cb",
+  "workflowId": "sBkQNCRqYLwGZ70M",
+  "nodes": [
+   {
+    "parameters": {
+     "rule": {
+      "interval": [
+       {
+        "field": "cronExpression",
+        "expression": "*/15 * * * *"
+       }
+      ]
+     }
+    },
+    "name": "Schedule Trigger",
+    "type": "n8n-nodes-base.scheduleTrigger",
+    "typeVersion": 1.2,
+    "position": [
+     -600,
+     0
+    ],
+    "id": "fc7d0c42-c29d-459d-acff-37190414ffbb"
+   },
+   {
+    "parameters": {
+     "resource": "sheet",
+     "operation": "read",
+     "documentId": {
+      "mode": "id",
+      "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+     },
+     "sheetName": {
+      "mode": "name",
+      "value": "Leads"
+     },
+     "returnAll": true,
+     "options": {
+      "dataLocationOnSheet": {
+       "values": {
+        "rangeDefinition": "detectAutomatically"
+       }
+      }
+     }
+    },
+    "name": "Leer Leads",
+    "type": "n8n-nodes-base.googleSheets",
+    "typeVersion": 4.7,
+    "position": [
+     -400,
+     0
+    ],
+    "credentials": {
+     "googleSheetsOAuth2Api": {
+      "id": "VY8mExbW6awFhxWX",
+      "name": "Google Sheets account"
+     }
+    },
+    "onError": "continueErrorOutput",
+    "id": "ec17d1b4-31c1-4f98-bbd7-c3a51a814ac0"
+   },
+   {
+    "parameters": {
+     "language": "javaScript",
+     "mode": "runOnceForAllItems",
+     "jsCode": "const now = $now.setZone('America/Argentina/Buenos_Aires');\nconst weekday = now.weekday;\nconst hour = now.hour;\nconst laboral = (weekday >= 1 && weekday <= 5) && (hour >= 8 && hour <= 17);\n\nconst CHAIN = {\n  '6h':  { next: '6h2',  delay: { hours: 6 } },\n  '6h2': { next: '6h3',  delay: { hours: 6 } },\n  '6h3': { next: '24h1', delay: { days: 1 } },\n  '24h1':{ next: '24h2', delay: { days: 1 } },\n  '24h2':{ next: '24h3', delay: { days: 1 } },\n  '24h3':{ next: '72h1', delay: { days: 3 } },\n  '72h1':{ next: '72h2', delay: { days: 1 } },\n  '72h2':{ next: '72h3', delay: { days: 1 } },\n  '72h3':{ next: '7d1',  delay: { days: 4 } },\n  '7d1': { next: '7d2',  delay: { days: 1 } },\n  '7d2': { next: '7d3',  delay: { days: 1 } },\n  '7d3': { next: '10d',  delay: { days: 3 } },\n  '10d': { next: 'm1',   delay: { months: 1 } },\n  'm1':  { next: 'm2',   delay: { months: 1 } },\n  'm2':  { next: 'm3',   delay: { months: 1 } },\n  'm3':  { next: 'm4',   delay: { months: 1 } },\n  'm4':  { next: 'm5',   delay: { months: 1 } },\n  'm5':  { next: 'm6',   delay: { months: 1 } },\n  'm6':  { next: null,   delay: null },\n};\n\nconst T = {\n  '6h':  'Hola {name}, ¿cómo estás? Pudiste ver mi mensaje anterior?',\n  '6h2': 'Con la información que me diste, ya podés dar el siguiente paso: organizarnos para que puedas ver tu casa terminada antes de construirla y saber cuánto saldría hacerla 🏡',\n  '6h3': '¿Querés que coordinemos? Es una reunión corta, sin compromiso, pero muy útil para ordenar ideas y tomar buenas decisiones desde el inicio',\n  '24h1':'Hola {name}, te escribo nuevamente porque realmente creo que esta reunión puede ayudarte mucho',\n  '24h2':'No es solo para hablar de metros cuadrados. Te cuento cómo organizarte económica y emocionalmente para que este proceso no se vuelva una carga',\n  '24h3':'Si te interesa, decime un horario que te quede cómodo y te agendo yo 📅',\n  '72h1':'Hola {name}, ¿cómo estás? No quiero insistir, pero muchas personas me dicen que esta charla les cambió totalmente la forma de encarar su casa',\n  '72h2':'En solo 30 minutos, te explico cómo ordenar prioridades, evitar errores comunes y encarar tu proyecto con más seguridad',\n  '72h3':'¿Te gustaría que coordinemos esta semana?',\n  '7d1': 'Hola {name}, ya pasó una semana desde que completaste el formulario. ¿Pudiste avanzar con algo de lo que tenías pensado?',\n  '7d2': 'Si todavía estás en esa etapa de dudas o de no saber por dónde arrancar, la llamada puede darte muchísima claridad',\n  '7d3': 'Estoy disponible esta semana, ¿querés que veamos un horario?',\n  '10d': 'Hola {name}.\\n\\nSé que esta llamada te puede ayudar mucho a encarar tu proyecto, pero no quiero insistirte. Si ahora no es el momento, está todo bien. Cuando quieras retomar, escribinos a este número y lo vemos juntos.',\n  'm1':  'Hola {name}, ¿cómo estás?\\n\\nAlgo que pocas personas saben al construir su casa es que el diseño puede hacerte ahorrar o gastar de más.\\n\\nPor ejemplo, la cantidad de metros cuadrados no es lo único que define el costo: pequeñas decisiones como el tipo de materiales, la distribución de los ambientes o la orientación de la casa pueden impactar fuerte en el presupuesto final.\\n\\nNosotros nos especializamos en optimizar el diseño para que no gastes de más sin necesidad.\\n\\nSi te interesa ver cómo podríamos hacerlo con tu proyecto, avisame y lo charlamos!',\n  'm2':  'Hola {name},\\n\\nMucha gente cuando empieza a construir comete el mismo error: arrancar sin tener un presupuesto detallado y bien armado.\\n\\nEl problema es que a mitad de obra aparecen costos imprevistos que pueden aumentar el gasto total hasta un 30%.\\n\\nPor eso, la mejor forma de evitar sorpresas es tener un diseño optimizado y un plan claro desde el primer día.\\n\\nSi todavía estás con la idea de construir, podemos ayudarte a hacerlo de la forma más eficiente posible. ¿Querés que lo charlemos?',\n  'm3':  'Hola {name},\\n\\nSeguro ya viste precios por metro cuadrado, pero la pregunta clave es: ¿cuánto te va a costar realmente tu casa?\\n\\nEl precio promedio del mercado es solo una referencia: el costo final depende de la distribución y el diseño de los espacios, la cantidad y calidad de los materiales, y la eficiencia en la construcción.\\n\\nNosotros nos enfocamos en optimizar todos estos factores para reducir costos sin afectar la calidad.\\n\\nSi querés asegurarte de que tu presupuesto esté bien ajustado antes de empezar, escribime y lo vemos!',\n  'm4':  'Hola {name},\\n\\nAlgo que mucha gente no tiene en cuenta cuando arranca su obra es que los sobrecostos pueden aparecer en cualquier etapa.\\n\\nLas 3 razones más comunes son:\\n❌ Cambios de último momento en el diseño.\\n❌ No tener un presupuesto detallado antes de empezar.\\n❌ Mal cálculo en materiales y mano de obra.\\n\\nPor eso, una buena planificación desde el principio te puede ahorrar tiempo, estrés y mucha plata.\\n\\nSi querés asegurarte de evitar estos problemas, avisame y lo charlamos!',\n  'm5':  'Hola {name},\\n\\nUno de los mayores dolores de cabeza al construir es que las obras suelen demorarse más de lo esperado.\\n\\n¿Por qué pasa esto?\\n🕑 Malas estimaciones en tiempos de obra.\\n🚧 Problemas con permisos y aprobaciones.\\n📉 Falta de planificación en el diseño y materiales.\\n\\nLo que hacemos en Estudio VArq es ayudarte a tener todo resuelto antes de empezar, para que la construcción no se vuelva un dolor de cabeza.\\n\\nSi querés asegurarte de que tu proyecto arranque y termine en tiempo, escribime y lo hablamos!',\n  'm6':  'Hola {name},\\n\\nHace un tiempo hablamos sobre tu proyecto. Si todavía estás con la idea de construir, nos encantaría ayudarte a planificarlo para que no gastes de más.\\n\\nSi te interesa que lo veamos juntos, escribime y lo coordinamos.\\n\\nSi no, no hay problema: cualquier cosa, sabés que podés contar con nosotros cuando lo necesites.\\n\\n¡Saludos! 😊',\n};\n\nconst out = [];\nfor (const lead of $input.all()) {\n  const etapa = String(lead.etapa_seg || '');\n  const stage = CHAIN[etapa];\n  if (!stage) continue;\n  const status = String(lead.status || '');\n  if (status !== 'cualificado' && status !== 'no_cualificado') continue;\n  if (!lead.prox_seg_ts || new Date(lead.prox_seg_ts).getTime() > Date.now()) continue;\n  if (!laboral) continue;\n  const name = String(lead.name || '').trim();\n  const message = (T[etapa] || '').replace(/\\{name\\}/g, name || 'cliente');\n  if (!message) continue;\n  const sheet_update = {\n    etapa_seg: stage.next || '',\n    prox_seg_ts: stage.next ? $now.plus(stage.delay).toISO() : '',\n    ultimo_msg_ts: now.toISO(),\n  };\n  if (!stage.next) sheet_update.status = 'inactivo';\n  out.push({ json: { phone: String(lead.phone || ''), name, message, etapa_actual: etapa, sheet_update } });\n}\nreturn out;"
+    },
+    "name": "Evaluar Seguimientos",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+     -200,
+     0
+    ],
+    "id": "48d42321-9f9e-4bc5-9558-a76c527395c3"
+   },
+   {
+    "parameters": {
+     "method": "POST",
+     "url": "https://adjustable-prior-ruby-medicaid.trycloudflare.com/send",
+     "sendBody": true,
+     "contentType": "json",
+     "specifyBody": "json",
+     "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+     "sendHeaders": true,
+     "headerParameters": {
+      "parameters": [
+       {
+        "name": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "name": "X-Secret",
+        "value": "={{ $credentials.httpHeaderAuth ? $credentials.httpHeaderAuth.value : 'MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq' }}"
+       }
+      ]
+     },
+     "options": {
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+     }
+    },
+    "name": "Enviar Seguimiento",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.4,
+    "position": [
+     0,
+     0
+    ],
+    "credentials": {
+     "httpHeaderAuth": {
+      "id": "lR6ya95Eh7j2TOEZ",
+      "name": "EstudioVARq Secret"
+     }
+    },
+    "onError": "continueErrorOutput",
+    "id": "e8fc4435-7a63-465e-8933-dba7d5dc6d4d"
+   },
+   {
+    "parameters": {
+     "resource": "sheet",
+     "operation": "appendOrUpdate",
+     "documentId": {
+      "mode": "id",
+      "value": "1eRokhMb6tL_RAA6URNC-tiB8qvneP5fkv51kfJpVg4g"
+     },
+     "sheetName": {
+      "mode": "name",
+      "value": "Leads"
+     },
+     "columns": {
+      "mappingMode": "defineBelow",
+      "value": "={{ Object.assign({}, $json.sheet_update, { lead_id: $json.lead_id }) }}",
+      "matchingColumns": [
+       "lead_id"
+      ],
+      "schema": [
+       {
+        "id": "lead_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lead_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "phone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "phone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "name",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "name",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "lastName",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "lastName",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "email",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "email",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "totalsM2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "totalsM2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "address",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "address",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "anotherPlace",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "anotherPlace",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "bathroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "bathroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "diningRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "diningRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "kitchen",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "kitchen",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "livingRoom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "livingRoom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "garage",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "garage",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "mainBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "mainBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "secondBedroom",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "secondBedroom",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "plants",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "plants",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "startDate",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "startDate",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "zone",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "zone",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "comments",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "comments",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "source",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "source",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "status",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "status",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "question_index",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "question_index",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "cualificado",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cualificado",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "razon_no_cual",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "razon_no_cual",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "etapa_seg",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "etapa_seg",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "prox_seg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "prox_seg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "ultimo_msg_ts",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "ultimo_msg_ts",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "calendar_event_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "calendar_event_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "notas",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "notas",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q1",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q1",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q2",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q2",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q3",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q3",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q4",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q4",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q5",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q5",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q6",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q6",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q7",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q7",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q8",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q8",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "q9",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "q9",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ]
+     },
+     "options": {}
+    },
+    "name": "Actualizar Etapa",
+    "type": "n8n-nodes-base.googleSheets",
+    "typeVersion": 4.7,
+    "position": [
+     200,
+     0
+    ],
+    "credentials": {
+     "googleSheetsOAuth2Api": {
+      "id": "VY8mExbW6awFhxWX",
+      "name": "Google Sheets account"
+     }
+    },
+    "onError": "continueErrorOutput",
+    "id": "602cbd07-732f-4887-9140-12d462f6208f"
+   },
+   {
+    "parameters": {
+     "mode": "manual",
+     "includeOtherFields": true,
+     "assignments": {
+      "assignments": [
+       {
+        "id": "evt-step",
+        "name": "step",
+        "type": "string",
+        "value": "={{ $('Evaluar Seguimientos').item.json.etapa_actual }}"
+       },
+       {
+        "id": "evt-phone",
+        "name": "phone",
+        "type": "string",
+        "value": "={{ $('Evaluar Seguimientos').item.json.phone }}"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "id": "2a607153-35b2-49df-86b8-710d33b23c70",
+    "name": "Armar evento (etapa)",
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.5,
+    "position": [
+     60,
+     0
+    ]
+   },
+   {
+    "parameters": {
+     "options": {
+      "waitForSubWorkflow": false
+     },
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "fMtZQG0f2sgv3SLq",
+      "cachedResultName": "EstudioVARq — Notificar CRM",
+      "cachedResultUrl": null
+     },
+     "workflowInputs": {
+      "mappingMode": "defineBelow",
+      "value": {},
+      "schema": []
+     }
+    },
+    "id": "c472483a-41df-4107-994d-327f82410228",
+    "name": "Notificar CRM (etapa)",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "typeVersion": 1.3,
+    "position": [
+     130,
+     80
+    ],
+    "alwaysOutputData": true
+   }
+  ],
+  "connections": {
+   "Schedule Trigger": {
+    "main": [
+     [
+      {
+       "node": "Leer Leads",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Leer Leads": {
+    "main": [
+     [
+      {
+       "node": "Evaluar Seguimientos",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Evaluar Seguimientos": {
+    "main": [
+     [
+      {
+       "node": "Enviar Seguimiento",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Enviar Seguimiento": {
+    "main": [
+     [
+      {
+       "node": "Armar evento (etapa)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Armar evento (etapa)": {
+    "main": [
+     [
+      {
+       "node": "Notificar CRM (etapa)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Notificar CRM (etapa)": {
+    "main": [
+     [
+      {
+       "node": "Actualizar Etapa",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Facundo Demarco",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "workflowPublishHistory": [
+   {
+    "createdAt": "2026-08-05T13:21:30.782Z",
+    "id": 75,
+    "workflowId": "sBkQNCRqYLwGZ70M",
+    "versionId": "cb6cf2f4-b4e6-4088-83ca-299d6014b3cb",
+    "event": "activated",
+    "userId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   },
+   {
+    "createdAt": "2026-08-05T13:21:30.728Z",
+    "id": 74,
+    "workflowId": "sBkQNCRqYLwGZ70M",
+    "versionId": "cb6cf2f4-b4e6-4088-83ca-299d6014b3cb",
+    "event": "deactivated",
+    "userId": "b7146a1c-8a2a-474f-bbb4-55fc0d8f4979"
+   }
+  ]
+ }
+}

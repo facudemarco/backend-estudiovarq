@@ -2,7 +2,7 @@ import os
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
 
-load_dotenv()  
+load_dotenv(override=True)  
 
 USER = os.getenv("USER")
 PASSWORD = os.getenv("PASSWORD")
