@@ -33,7 +33,7 @@ export default function SofiaPage() {
     };
 
     checkState();
-    const t = setInterval(checkState, 5000);
+    const t = setInterval(checkState, 15000);
     return () => {
       alive = false;
       clearInterval(t);

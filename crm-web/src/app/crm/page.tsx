@@ -103,7 +103,7 @@ export default function CrmPage() {
       loadLeads();
       checkAgent();
       if (selected) loadDetail(selected);
-    }, 5000);
+    }, 15000);
     return () => clearInterval(t);
   }, [loadLeads, loadDetail, selected]);
 

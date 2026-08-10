@@ -1,5 +1,6 @@
 import os
 import re
+import threading
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -20,13 +21,35 @@ LEAD_COLUMNS = (
 )
 _DT_COLUMNS = {"prox_seg_ts", "ultimo_msg_ts", "created_at", "updated_at"}
 
+_pool = None
+_pool_lock = threading.Lock()
+
+
+def _get_pool():
+    """Pool persistente: reutiliza conexiones (Hostinger limita a 500 conexiones/hora)."""
+    global _pool
+    with _pool_lock:
+        if _pool is None:
+            from dbutils.pooled_db import PooledDB
+            _pool = PooledDB(
+                creator=pymysql,
+                maxconnections=6,
+                mincached=1,
+                maxcached=3,
+                blocking=True,
+                ping=7,
+                host=os.getenv("HOST"),
+                user=os.getenv("USER"),
+                password=os.getenv("PASSWORD"),
+                database=os.getenv("DATABASE"),
+                connect_timeout=10,
+                cursorclass=pymysql.cursors.DictCursor,
+            )
+        return _pool
+
 
 def get_conn():
-    return pymysql.connect(
-        host=os.getenv("HOST"), user=os.getenv("USER"),
-        password=os.getenv("PASSWORD"), database=os.getenv("DATABASE"),
-        connect_timeout=10, cursorclass=pymysql.cursors.DictCursor,
-    )
+    return _get_pool().connection()
 
 
 def _ts_to_iso(value):
