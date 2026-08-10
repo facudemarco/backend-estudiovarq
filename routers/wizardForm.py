@@ -39,7 +39,7 @@ def wizardForm(form_data: FormData):
     if not sender_password:
         raise HTTPException(status_code=500, detail="La contraseña del remitente no está configurada")
 
-    receiver_email = "consultaform@estudiovarq.com.ar"
+    receiver_email = os.environ.get("RECEIVER", "consultaform@estudiovarq.com.ar")
     subject = f"{form_data.name} {form_data.lastName} - M2 - Inicio"
     body = (
         f"Datos del cliente:\n \nNombre: {form_data.name}\nApellido: {form_data.lastName}\n"
@@ -69,7 +69,7 @@ def wizardForm(form_data: FormData):
         lead_id = str(uuid.uuid4())
         webhook_url = os.environ.get(
             "N8N_ENTRADA_URL",  # prod
-            "https://n8n.iwebtecnology.com/webhook/estudiovarq-chat"
+            "https://n8n.iwebtecnology.com/webhook/estudiovarq-entrada"
         )
         payload = {
             "lead_id": lead_id,
@@ -112,7 +112,7 @@ def wizardFormHouses(form_data: FormData):
     if not sender_password:
         raise HTTPException(status_code=500, detail="La contraseña del remitente no está configurada")
 
-    receiver_email = "consultaform@estudiovarq.com.ar"
+    receiver_email = os.environ.get("RECEIVER", "consultaform@estudiovarq.com.ar")
     subject = f"{form_data.name} {form_data.lastName} - M2 - Casas"
     body = (
         f"Datos del cliente:\n \nNombre: {form_data.name}\nApellido: {form_data.lastName}\n"
@@ -142,7 +142,7 @@ def wizardFormHouses(form_data: FormData):
         lead_id = str(uuid.uuid4())
         webhook_url = os.environ.get(
             "N8N_ENTRADA_URL",  # prod
-            "https://n8n.iwebtecnology.com/webhook/estudiovarq-chat"
+            "https://n8n.iwebtecnology.com/webhook-test/estudiovarq-chat"
         )
         payload = {
             "lead_id": lead_id,

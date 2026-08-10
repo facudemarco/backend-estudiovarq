@@ -26,7 +26,7 @@ def sendEmail(form_data: FormData):
     if not sender_password:
         raise HTTPException(status_code=500, detail="La contraseña del remitente no está configurada")
         
-    receiver_email = "consultaform@estudiovarq.com.ar"
+    receiver_email = os.environ.get("RECEIVER", "consultaform@estudiovarq.com.ar")
     subject = f"{form_data.full_name} - Contacto"
     body = f"Nombre completo: {form_data.full_name}\nTeléfono: {form_data.phone}\nEmail: {form_data.email}\nDirección: {form_data.address}\nZona: {form_data.zone}\nFecha de inicio: {form_data.startDate}\nComentarios: {form_data.comments}"
 
