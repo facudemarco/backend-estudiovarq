@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const AGENT_URL = process.env.NEXT_PUBLIC_AGENT_URL || "https://estudiovarq.com.ar/agent";
@@ -46,6 +47,7 @@ function fmtTs(ts: string | null | undefined): string {
 }
 
 export default function CrmPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -60,16 +62,20 @@ export default function CrmPage() {
 
   const loadLeads = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/crm/leads`);
+      const res = await fetch(`${API_URL}/crm/leads`, { credentials: "include" });
+      if (res.status === 401) {
+        router.replace("/login");
+        return;
+      }
       if (res.ok) setLeads(await res.json());
     } catch {
       /* backend abajo */
     }
-  }, []);
+  }, [router]);
 
   const loadDetail = useCallback(async (phone: string) => {
     try {
-      const res = await fetch(`${API_URL}/crm/leads/${encodeURIComponent(phone)}`);
+      const res = await fetch(`${API_URL}/crm/leads/${encodeURIComponent(phone)}`, { credentials: "include" });
       if (!res.ok) return;
       const data = await res.json();
       setMessages(data.messages || []);
@@ -89,7 +95,7 @@ export default function CrmPage() {
         .catch(() => setAgentConnected(false));
     };
     checkAgent();
-    fetch(`${API_URL}/crm/status`)
+    fetch(`${API_URL}/crm/status`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setAgentConnected((prev) => prev || !!d.connected))
       .catch(() => {});
@@ -117,6 +123,7 @@ export default function CrmPage() {
     try {
       const res = await fetch(`${API_URL}/crm/leads/${encodeURIComponent(selected)}/send`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: msg }),
       });
@@ -141,6 +148,7 @@ export default function CrmPage() {
     try {
       const res = await fetch(`${API_URL}/crm/leads/${encodeURIComponent(selected)}/${paused ? "resume" : "pause"}`, {
         method: "POST",
+        credentials: "include",
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -185,6 +193,15 @@ export default function CrmPage() {
               WhatsApp conectado
             </span>
           )}
+          <button
+            onClick={async () => {
+              await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
+              router.replace("/login");
+            }}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-all hover:bg-gray-100"
+          >
+            Cerrar sesión
+          </button>
         </div>
       </div>
 
