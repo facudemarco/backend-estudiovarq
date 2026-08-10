@@ -2,6 +2,7 @@
 # CRM sobre MySQL (única fuente de verdad) + control del agent.
 import os
 from datetime import datetime
+from uuid import uuid4
 import requests
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
@@ -369,4 +370,37 @@ def crm_test_form(data: TestFormData):
         db.insert_event(phone_n, "bienvenida", detail="lead creado por form de prueba", actor="system")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"no se pudo insertar el lead: {e}")
+
+    # Dispara el mismo flujo que el form real: webhook n8n → upsert prod → m1/m2 → agente → WhatsApp
+    try:
+        webhook_url = os.getenv(
+            "N8N_ENTRADA_URL",
+            "https://n8n.iwebtecnology.com/webhook/estudiovarq-entrada",
+        )
+        payload = {
+            "lead_id": str(uuid4()),
+            "name": data.name,
+            "lastName": data.lastName,
+            "email": data.email,
+            "phone": phone_n,
+            "calendly_link": "https://calendly.com/lasshaky-fju6/llamada-con-un-arquitecto",
+            "address": data.address,
+            "anotherPlace": data.anotherPlace,
+            "bathroom": data.bathroom,
+            "comments": data.comments,
+            "diningRoom": data.diningRoom,
+            "garage": data.garage,
+            "kitchen": data.kitchen,
+            "livingRoom": data.livingRoom,
+            "mainBedroom": data.mainBedroom,
+            "totalsM2": data.totalsM2,
+            "plants": data.plants,
+            "secondBedroom": data.secondBedroom,
+            "startDate": data.startDate,
+            "zone": data.zone,
+            "source": "test-form",
+        }
+        requests.post(webhook_url, json=payload, timeout=20)
+    except Exception as e:
+        print(f"test-form→n8n: {e}")
     return {"status": "ok", "phone": phone_n, "lead": db.get_lead(phone_n)}
