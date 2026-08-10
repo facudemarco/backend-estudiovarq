@@ -34,9 +34,9 @@ def _get_pool():
             from dbutils.pooled_db import PooledDB
             _pool = PooledDB(
                 creator=pymysql,
-                maxconnections=6,
+                maxconnections=3,
                 mincached=1,
-                maxcached=3,
+                maxcached=1,
                 blocking=True,
                 ping=7,
                 host=os.getenv("HOST"),
