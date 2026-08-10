@@ -19,3 +19,4 @@ google-sheets-service.json
 # Deploy local
 scripts/.tunnel*
 scripts/bin/
+scripts/deploy/
