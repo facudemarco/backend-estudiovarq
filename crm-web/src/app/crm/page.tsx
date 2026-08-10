@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const AGENT_URL = process.env.NEXT_PUBLIC_AGENT_URL || "https://estudiovarq.com.ar/agent";
 
 type Lead = {
   phone: string;
@@ -81,12 +82,20 @@ export default function CrmPage() {
 
   useEffect(() => {
     loadLeads();
+    const checkAgent = () => {
+      fetch(`${AGENT_URL}/state`)
+        .then((r) => r.json())
+        .then((d) => setAgentConnected(!!d.connected))
+        .catch(() => setAgentConnected(false));
+    };
+    checkAgent();
     fetch(`${API_URL}/crm/status`)
       .then((r) => r.json())
-      .then((d) => setAgentConnected(!!d.connected))
-      .catch(() => setAgentConnected(false));
+      .then((d) => setAgentConnected((prev) => prev || !!d.connected))
+      .catch(() => {});
     const t = setInterval(() => {
       loadLeads();
+      checkAgent();
       if (selected) loadDetail(selected);
     }, 5000);
     return () => clearInterval(t);
