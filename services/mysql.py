@@ -1,6 +1,7 @@
 import os
 import re
 import threading
+import time
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -49,7 +50,18 @@ def _get_pool():
 
 
 def get_conn():
-    return _get_pool().connection()
+    """Pool persistente; ante el limite 1226 de Hostinger reintenta hasta que el contador horario se resetee."""
+    last_err = None
+    for _ in range(10):
+        try:
+            return _get_pool().connection()
+        except pymysql.err.OperationalError as e:
+            last_err = e
+            if e.args and e.args[0] == 1226:
+                time.sleep(6)
+                continue
+            raise
+    raise last_err
 
 
 def _ts_to_iso(value):
