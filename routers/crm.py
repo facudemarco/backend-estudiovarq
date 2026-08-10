@@ -313,3 +313,60 @@ def crm_calendar(time_min: Optional[str] = None, time_max: Optional[str] = None)
     if isinstance(events, dict):
         events = events.get("items") or [events]
     return [_normalize_event(ev) for ev in (events or [])]
+
+
+class TestFormData(BaseModel):
+    name: str = "Lead de prueba"
+    lastName: str = "DummY"
+    phone: str = "5491100000000"
+    email: str = "test@dummy.com"
+    address: str = "Calle Falsa 123"
+    zone: str = "CABA"
+    totalsM2: float = 35.0
+    bathroom: str = "1"
+    kitchen: str = "1"
+    livingRoom: str = "1"
+    diningRoom: str = ""
+    mainBedroom: str = "1"
+    secondBedroom: str = ""
+    plants: str = "1"
+    garage: str = "0"
+    anotherPlace: str = ""
+    startDate: str = "2026-09-01"
+    comments: str = "Lead generado por el form de prueba (no toca n8n ni envía mail)"
+
+
+@router.post("/crm/test-form")
+def crm_test_form(data: TestFormData):
+    phone_n = normalize_phone(data.phone)
+    if not phone_n:
+        raise HTTPException(status_code=400, detail="phone inválido")
+    lead = {
+        "phone": phone_n,
+        "name": data.name,
+        "lastName": data.lastName,
+        "email": data.email,
+        "address": data.address,
+        "zone": data.zone,
+        "totalsM2": str(data.totalsM2),
+        "bathroom": data.bathroom,
+        "kitchen": data.kitchen,
+        "livingRoom": data.livingRoom,
+        "diningRoom": data.diningRoom,
+        "mainBedroom": data.mainBedroom,
+        "secondBedroom": data.secondBedroom,
+        "plants": data.plants,
+        "garage": data.garage,
+        "anotherPlace": data.anotherPlace,
+        "startDate": data.startDate,
+        "comments": data.comments,
+        "status": "nuevo",
+        "source": "test-form",
+    }
+    try:
+        db.upsert_lead(lead)
+        db.insert_message(phone_n, "in", data.comments, source="test-form")
+        db.insert_event(phone_n, "bienvenida", detail="lead creado por form de prueba", actor="system")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"no se pudo insertar el lead: {e}")
+    return {"status": "ok", "phone": phone_n, "lead": db.get_lead(phone_n)}

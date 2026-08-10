@@ -163,6 +163,9 @@ export default function CrmPage() {
           <p className="text-sm text-gray-500">Leads, conversaciones y control del bot</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/form-test" className="rounded border border-tertiary px-3 py-1.5 text-sm text-tertiary transition-all hover:bg-tertiary hover:text-white">
+            Probar form
+          </Link>
           {!agentConnected && (
             <Link href="/" className="rounded border border-[#ff7171] bg-[#ff7171] px-3 py-1.5 text-sm text-white transition-all hover:bg-primary">
               WhatsApp desconectado — conectar
