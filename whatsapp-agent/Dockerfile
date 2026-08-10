@@ -9,7 +9,7 @@ RUN apt-get update && \
 
 # 📦 inicializamos proyecto y instalamos dependencias del agente
 RUN npm init -y && \
-    npm install express @whiskeysockets/baileys pino pino-pretty qrcode-terminal
+    npm install express @whiskeysockets/baileys pino pino-pretty qrcode-terminal qrcode cors
 
 # 📁 copiamos el agente
 COPY agent.js ./
