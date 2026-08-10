@@ -1,11 +1,9 @@
-FROM mirror.gcr.io/library/node:20-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 # 🔧 deps del sistema: git (para npm), y build tools por si algún paquete los necesita
-RUN apt-get update && \
-    apt-get install -y git python3 make g++ && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache git python3 make g++
 
 # 📦 inicializamos proyecto y instalamos dependencias del agente
 RUN npm init -y && \
