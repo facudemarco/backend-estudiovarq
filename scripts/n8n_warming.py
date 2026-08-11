@@ -7,7 +7,7 @@ from pathlib import Path
 N8N_BASE = "https://n8n.iwebtecnology.com/api/v1"
 N8N_KEY = os.getenv("N8N_API_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNzE0NmExYy04YTJhLTQ3NGYtYmJiNC01NWZjMGQ4ZjQ5NzkiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiOGVkMWJkZjItY2JjNS00NmViLWI1NDUtZTdmNGFkMjM2ODg3IiwiaWF0IjoxNzg0OTM2MDI0fQ.2BeT3WAS5okQwJ5ACMYtDltqCTYywgQ4MXz6SF8wssU")
 WF_ID = "8y9D3gwEyjhEbWA7"
-BACKEND = os.getenv("BACKEND_URL", "https://northwest-united-scott-conducted.trycloudflare.com")
+BACKEND = os.getenv("BACKEND_URL", "https://api-estudiovarq.iwebtecnology.com")
 GCAI_ID = "d4YauwT9uHxEtwxo"
 GCAI_NAME = "Google Calendar account"
 HEADERS = [
@@ -43,11 +43,13 @@ return [{{ json: {{ phone: out.phone, chatInput: out.chatInput, lead_name: out.l
 
 def _crm_secret_from_env() -> str:
     """Lee CRM_SECRET del .env del backend (los Code nodes no usan credenciales)."""
-    from dotenv import load_dotenv
     env_path = Path(__file__).resolve().parent.parent / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
-    secret = os.getenv("CRM_SECRET", "").strip()
+    secret = os.getenv("CRM_SECRET", "")
+    if not secret and env_path.exists():
+        for line in env_path.read_text().splitlines():
+            if line.startswith("CRM_SECRET="):
+                secret = line.split("=", 1)[1].strip().strip('"').strip("'")
+                break
     if not secret:
         raise RuntimeError("CRM_SECRET no está en backend-estudiovarq/.env")
     return secret

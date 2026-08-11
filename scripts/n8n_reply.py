@@ -6,7 +6,9 @@ import requests
 N8N_BASE = "https://n8n.iwebtecnology.com/api/v1"
 N8N_KEY = os.getenv("N8N_API_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNzE0NmExYy04YTJhLTQ3NGYtYmJiNC01NWZjMGQ4ZjQ5NzkiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiOGVkMWJkZjItY2JjNS00NmViLWI1NDUtZTdmNGFkMjM2ODg3IiwiaWF0IjoxNzg0OTM2MDI0fQ.2BeT3WAS5okQwJ5ACMYtDltqCTYywgQ4MXz6SF8wssU")
 WF_ID = "Pb3sx6n97pbvLDFH"
-BACKEND = os.getenv("BACKEND_URL", "https://northwest-united-scott-conducted.trycloudflare.com")
+BACKEND = os.getenv("BACKEND_URL", "https://api-estudiovarq.iwebtecnology.com")
+AGENT_URL = os.getenv("AGENT_URL", "https://api-estudiovarq.iwebtecnology.com/send")
+SEND_URL_NODES = {"Enviar Respuesta Cualificado", "Enviar Q Siguiente", "Enviar Cierre Wizard"}
 HEADERS = [
     {"name": "Content-Type", "value": "application/json"},
     {"name": "X-Secret", "value": "={{ $credentials.httpHeaderAuth ? $credentials.httpHeaderAuth.value : '' }}"},
@@ -70,6 +72,8 @@ def build_replaced_workflow(raw: dict) -> dict:
             )
             node.clear()
             node.update(new_node)
+        elif node.get("name") in SEND_URL_NODES:
+            node["parameters"]["url"] = AGENT_URL
     return wf
 
 
