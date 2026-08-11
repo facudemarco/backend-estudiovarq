@@ -24,3 +24,16 @@ def test_actualizar_etapa_uses_phone():
     assert "crm/update-lead" in n["parameters"]["url"]
     assert "phone: $json.phone" in n["parameters"]["jsonBody"]
     assert "sheet_update" in n["parameters"]["jsonBody"]
+
+def test_enviar_seguimiento_apunta_a_prod():
+    wf = _wf()
+    n = [x for x in wf["nodes"] if x["name"] == "Enviar Seguimiento"][0]
+    assert "trycloudflare" not in n["parameters"]["url"]
+    assert n["parameters"]["url"].endswith("/send")
+
+def test_apertura_inyectada_en_evaluador():
+    wf = _wf()
+    n = [x for x in wf["nodes"] if x["name"] == "Evaluar Seguimientos"][0]
+    code = n["parameters"]["jsCode"]
+    assert "etapa === 'apertura'" in code
+    assert "trycloudflare" not in code

@@ -6,7 +6,8 @@ import requests
 N8N_BASE = "https://n8n.iwebtecnology.com/api/v1"
 N8N_KEY = os.getenv("N8N_API_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNzE0NmExYy04YTJhLTQ3NGYtYmJiNC01NWZjMGQ4ZjQ5NzkiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiOGVkMWJkZjItY2JjNS00NmViLWI1NDUtZTdmNGFkMjM2ODg3IiwiaWF0IjoxNzg0OTM2MDI0fQ.2BeT3WAS5okQwJ5ACMYtDltqCTYywgQ4MXz6SF8wssU")
 WF_ID = "sBkQNCRqYLwGZ70M"
-BACKEND = os.getenv("BACKEND_URL", "https://northwest-united-scott-conducted.trycloudflare.com")
+BACKEND = os.getenv("BACKEND_URL", "https://api-estudiovarq.iwebtecnology.com")
+AGENT_URL = os.getenv("AGENT_URL", "https://api-estudiovarq.iwebtecnology.com/send")
 HEADERS = [
     {"name": "Content-Type", "value": "application/json"},
     {"name": "X-Secret", "value": "={{ $credentials.httpHeaderAuth ? $credentials.httpHeaderAuth.value : '' }}"},
@@ -57,6 +58,8 @@ SHEET_TO_HTTP = {
     },
 }
 
+SEND_URL_NODES = {"Enviar Seguimiento"}
+
 
 # Bug real de producción (2026-08-07): el Code node del evaluador iteraba
 # `for (const lead of $input.all())` y leía `lead.etapa_seg`, pero n8n (Code node v2)
@@ -69,6 +72,27 @@ NEW_LOOP_LINE = (
     "const RL = (it && it.json) ? it.json : it; const lead = RL;"
 )
 FIXED_JS = f"{NEW_LOOP_LINE}\n"
+
+# Retomar fuera de horario (2026-08-11): el lead que entra de noche/no laboral queda
+# con etapa_seg='apertura' y prox_seg_ts vencido; el evaluador lo retoma en el primer
+# tick laboral (el guard `laboral` ya lo espera) y le manda m1+m2 como si hubiera
+# entrado en horario, pasándolo a wizard (idéntico al flujo laboral del workflow de entrada).
+APERTURA_ANCHOR = "  const etapa = String(lead.etapa_seg || '');\n  const stage = CHAIN[etapa];"
+APERTURA_BLOCK = """  const etapa = String(lead.etapa_seg || '');
+  if (etapa === 'apertura') {
+    // lead retomado fuera de horario: solo en horario laboral, manda m1+m2 y pasa a wizard
+    if (!laboral) continue;
+    const apname = String(lead.name || '').trim() || 'cliente';
+    const aptotal = String(lead.totalsM2 || '').trim();
+    const apm1 = 'Hola ' + apname + '! 👋👋\\n\\nComo estás? Soy Sofía, del equipo de Estudio VArq - Arquitectura.\\n\\nMe alegra que estés con el proyecto de tu casa! Felicitaciones! ❤️\\n\\nEn base a las respuestas que diste en nuestro formulario, hice los cálculos y *los metros cuadrados totales de tu casa ideal son ' + aptotal + ' m2*.';
+    const apm2 = 'El próximo paso es: Ver tu casa terminada antes de construirla y saber cuánto saldría hacerla 🏡\\n\\nTe interesa?';
+    const apupdate = { status: 'wizard', question_index: 1, prox_seg_ts: $now.plus({ hours: 6 }).toISO(), etapa_seg: '6h', ultimo_msg_ts: now.toISO() };
+    const apphone = String(lead.phone || '');
+    out.push({ json: { phone: apphone, name: apname, message: apm1, etapa_actual: 'apertura', sheet_update: apupdate } });
+    out.push({ json: { phone: apphone, name: apname, message: apm2, etapa_actual: 'apertura', sheet_update: {} } });
+    continue;
+  }
+  const stage = CHAIN[etapa];"""
 
 
 def build_replaced_workflow(raw: dict) -> dict:
@@ -84,11 +108,17 @@ def build_replaced_workflow(raw: dict) -> dict:
             )
             node.clear()
             node.update(new_node)
-        if node.get("name") == "Evaluar Seguimientos" and \
-                OLD_LOOP_LINE in (code := (node.get("parameters") or {}).get("jsCode", "")) \
-                and "const RL = " not in code:
-            node["parameters"]["jsCode"] = code.replace(OLD_LOOP_LINE, NEW_LOOP_LINE, 1)
-            print("   [fix] shape de items aplicado a 'Evaluar Seguimientos' (Code node v2)")
+        if node.get("name") in SEND_URL_NODES:
+            node.setdefault("parameters", {})["url"] = AGENT_URL
+        if node.get("name") == "Evaluar Seguimientos":
+            code = (node.get("parameters") or {}).get("jsCode", "")
+            if OLD_LOOP_LINE in code and "const RL = " not in code:
+                code = code.replace(OLD_LOOP_LINE, NEW_LOOP_LINE, 1)
+                print("   [fix] shape de items aplicado a 'Evaluar Seguimientos' (Code node v2)")
+            if "apertura" not in code and APERTURA_ANCHOR in code:
+                code = code.replace(APERTURA_ANCHOR, APERTURA_BLOCK, 1)
+                print("   [fix] etapa 'apertura' (retomar fuera de horario) inyectada en el evaluador")
+            node["parameters"]["jsCode"] = code
     return wf
 
 

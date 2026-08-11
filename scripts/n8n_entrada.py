@@ -6,7 +6,7 @@ import requests
 N8N_BASE = "https://n8n.iwebtecnology.com/api/v1"
 N8N_KEY = os.getenv("N8N_API_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNzE0NmExYy04YTJhLTQ3NGYtYmJiNC01NWZjMGQ4ZjQ5NzkiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiOGVkMWJkZjItY2JjNS00NmViLWI1NDUtZTdmNGFkMjM2ODg3IiwiaWF0IjoxNzg0OTM2MDI0fQ.2BeT3WAS5okQwJ5ACMYtDltqCTYywgQ4MXz6SF8wssU")
 WF_ID = "h1kQ7hg0aWjYXl4v"
-BACKEND = os.getenv("BACKEND_URL", "https://northwest-united-scott-conducted.trycloudflare.com")
+BACKEND = os.getenv("BACKEND_URL", "https://api-estudiovarq.iwebtecnology.com")
 AGENT_URL = os.getenv("AGENT_URL", "https://api-estudiovarq.iwebtecnology.com/send")
 HEADERS = [
     {"name": "Content-Type", "value": "application/json"},
@@ -55,7 +55,8 @@ SHEET_TO_HTTP = {
     "Sheets status=nuevo (no laboral)": {
         "url": f"{BACKEND}/crm/update-lead",
         "body": ("={{ JSON.stringify({ phone: $('Armar msg no laboral').item.json.lead.phone, "
-                 "changes: { status: 'nuevo' } }) }}"),
+                 "changes: { status: 'nuevo', etapa_seg: 'apertura', "
+                 "prox_seg_ts: $now.minus({minutes: 1}).toISO() } }) }}"),
     },
 }
 
