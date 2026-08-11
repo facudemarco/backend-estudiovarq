@@ -53,7 +53,7 @@ SHEET_TO_HTTP = {
     "Actualizar Etapa": {
         "method": "POST",
         "url": f"{BACKEND}/crm/update-lead",
-        "body": "={{ JSON.stringify({ phone: $json.phone, changes: $json.sheet_update }) }}",
+        "body": "={{ JSON.stringify({ phone: $('Evaluar Seguimientos').item.json.phone, changes: $('Evaluar Seguimientos').item.json.sheet_update }) }}",
         "extra_options": None,
     },
 }

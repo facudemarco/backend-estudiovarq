@@ -22,8 +22,8 @@ def test_actualizar_etapa_uses_phone():
     wf = _wf()
     n = [x for x in wf["nodes"] if x["name"] == "Actualizar Etapa"][0]
     assert "crm/update-lead" in n["parameters"]["url"]
-    assert "phone: $json.phone" in n["parameters"]["jsonBody"]
-    assert "sheet_update" in n["parameters"]["jsonBody"]
+    assert "$('Evaluar Seguimientos').item.json.phone" in n["parameters"]["jsonBody"]
+    assert "$('Evaluar Seguimientos').item.json.sheet_update" in n["parameters"]["jsonBody"]
 
 def test_enviar_seguimiento_apunta_a_prod():
     wf = _wf()
