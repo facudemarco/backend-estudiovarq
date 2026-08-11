@@ -394,7 +394,10 @@ async function startSock() {
           }),
           fetch(CRM_INBOX_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-Secret": N8N_REPLIES_SECRET,
+            },
             body: JSON.stringify({ phone, text }),
           }),
         ]).catch(() => {});
