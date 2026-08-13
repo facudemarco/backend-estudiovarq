@@ -242,6 +242,19 @@ def crm_leads_pending(lt_ts: Optional[str] = None, x_secret: Optional[str] = Hea
     return db.leads_pending(cutoff)
 
 
+@router.get("/crm/lead-wizard-latest")
+def crm_lead_wizard_latest(x_secret: Optional[str] = Header(default=None)):
+    check_secret(x_secret)
+    conn = db.get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM crm_leads WHERE status='wizard' ORDER BY created_at DESC LIMIT 1"
+    )
+    row = cur.fetchone()
+    conn.close()
+    return db._lead_from_row(dict(row)) if row else {"phone": ""}
+
+
 @router.get("/crm/search")
 def crm_search(q: str):
     if not q or len(q) < 2:
