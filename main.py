@@ -31,7 +31,7 @@ app.add_middleware(
 )
 
 BOT_PATHS = {"/crm/inbox", "/crm/events", "/crm/upsert-lead", "/crm/update-lead",
-             "/crm/lead", "/crm/leads-pending", "/crm/parse-agendar", "/crm/test-form"}
+             "/crm/lead", "/crm/lead-wizard-latest", "/crm/leads-pending", "/crm/parse-agendar", "/crm/test-form"}
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
