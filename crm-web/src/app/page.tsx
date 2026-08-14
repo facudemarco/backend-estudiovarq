@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const AGENT_URL = process.env.NEXT_PUBLIC_AGENT_URL || "http://localhost:3008";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function SofiaPage() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function SofiaPage() {
 
     const checkState = async () => {
       try {
-        const res = await fetch(`${AGENT_URL}/state`);
+        const res = await fetch(`${API_URL}/agent/state`);
         const data = await res.json();
         if (!alive) return;
         setState(data);
@@ -24,7 +24,7 @@ export default function SofiaPage() {
           router.replace("/crm");
           return;
         }
-        const qrRes = await fetch(`${AGENT_URL}/qr`);
+        const qrRes = await fetch(`${API_URL}/agent/qr`);
         const qrData = await qrRes.json();
         if (alive) setQr(qrData.qr);
       } catch {

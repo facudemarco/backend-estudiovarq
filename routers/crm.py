@@ -46,6 +46,7 @@ def agent_connected() -> bool:
 class InboxMsg(BaseModel):
     phone: str
     text: str
+    direction: str = "in"
 
 
 class OutMsg(BaseModel):
@@ -80,9 +81,11 @@ def crm_inbox(msg: InboxMsg, x_secret: Optional[str] = Header(default=None)):
     text = (msg.text or "")[:4000]
     if not phone:
         raise HTTPException(status_code=400, detail="phone inválido")
+    direction = msg.direction if msg.direction in ("in", "out") else "in"
     db.upsert_lead({"phone": phone})
-    db.insert_message(phone, "in", text, "lead")
-    db.incr_unread(phone)
+    db.insert_message(phone, direction, text, "lead")
+    if direction == "in":
+        db.incr_unread(phone)
     db.update_lead(phone, {
         "ultimo_msg_ts": datetime.now().isoformat(),
         "last_message": text,
@@ -251,8 +254,27 @@ def crm_lead_wizard_latest(x_secret: Optional[str] = Header(default=None)):
         "SELECT * FROM crm_leads WHERE status='wizard' ORDER BY created_at DESC LIMIT 1"
     )
     row = cur.fetchone()
+    if not row:
+        cur.execute(
+            "SELECT * FROM crm_leads ORDER BY created_at DESC LIMIT 1"
+        )
+        row = cur.fetchone()
     conn.close()
     return db._lead_from_row(dict(row)) if row else {"phone": ""}
+
+
+@router.get("/crm/messages")
+def crm_messages(phone: str, x_secret: Optional[str] = Header(default=None)):
+    check_secret(x_secret)
+    conn = db.get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, phone, direction, text, source, ts FROM crm_messages WHERE phone=%s ORDER BY ts, id",
+        (phone,),
+    )
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return rows
 
 
 @router.get("/crm/search")
@@ -298,6 +320,24 @@ def crm_metrics():
 @router.get("/crm/status")
 def crm_status():
     return {"connected": agent_connected()}
+
+
+@router.get("/agent/state")
+def agent_state():
+    try:
+        r = requests.get(AGENT_STATE, timeout=5)
+        return r.json()
+    except Exception:
+        return {"connected": False, "hasAuth": False, "qrAvailable": False}
+
+
+@router.get("/agent/qr")
+def agent_qr():
+    try:
+        r = requests.get(f"{AGENT_BASE}/qr", timeout=5)
+        return r.json()
+    except Exception:
+        return {"connected": False, "qr": None, "message": "agente no disponible"}
 
 
 N8N_CALENDAR_WEBHOOK = os.getenv("N8N_CALENDAR_WEBHOOK", "https://n8n.iwebtecnology.com/webhook/estudiovarq-calendario")

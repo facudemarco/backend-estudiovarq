@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const AGENT_URL = process.env.NEXT_PUBLIC_AGENT_URL || "https://estudiovarq.com.ar/agent";
 
 type Lead = {
   phone: string;
@@ -89,7 +88,7 @@ export default function CrmPage() {
   useEffect(() => {
     loadLeads();
     const checkAgent = () => {
-      fetch(`${AGENT_URL}/state`)
+      fetch(`${API_URL}/agent/state`)
         .then((r) => r.json())
         .then((d) => setAgentConnected(!!d.connected))
         .catch(() => setAgentConnected(false));
