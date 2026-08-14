@@ -256,7 +256,7 @@ def crm_lead_wizard_latest(x_secret: Optional[str] = Header(default=None)):
     row = cur.fetchone()
     if not row:
         cur.execute(
-            "SELECT * FROM crm_leads ORDER BY created_at DESC LIMIT 1"
+            "SELECT * FROM crm_leads WHERE status IN ('wizard','cualificado','no_cualificado') ORDER BY created_at DESC LIMIT 1"
         )
         row = cur.fetchone()
     conn.close()
