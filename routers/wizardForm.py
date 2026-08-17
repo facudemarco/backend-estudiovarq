@@ -65,41 +65,8 @@ def wizardForm(form_data: FormData):
     except Exception as e:
         print(f"Error al enviar el correo: {e}")
         raise HTTPException(status_code=500, detail="Error al enviar el correo")
-    try:
-        lead_id = str(uuid.uuid4())
-        webhook_url = os.environ.get(
-            "N8N_ENTRADA_URL",  # prod
-            "https://n8n.iwebtecnology.com/webhook/estudiovarq-entrada"
-        )
-        payload = {
-            "lead_id": lead_id,
-            "name": form_data.name,
-            "lastName": form_data.lastName,
-            "email": form_data.email,
-            "phone": str(form_data.phone),
-            "calendly_link": os.environ.get(
-                "CALENDLY_LINK_DEFAULT",
-                "https://calendly.com/lasshaky-fju6/llamada-con-un-arquitecto"
-            ),
-            "address": form_data.address,
-            "anotherPlace": form_data.anotherPlace,
-            "bathroom": form_data.bathroom,
-            "comments": form_data.comments,
-            "diningRoom": form_data.diningRoom,
-            "garage": form_data.garage,
-            "kitchen": form_data.kitchen,
-            "livingRoom": form_data.livingRoom,
-            "mainBedroom": form_data.mainBedroom,
-            "totalsM2": form_data.totalsM2,
-            "plants": form_data.plants,
-            "secondBedroom": form_data.secondBedroom,
-            "startDate": form_data.startDate,
-            "zone": form_data.zone,
-            "source": "wizardForm"
-        }
-        requests.post(webhook_url, json=payload, timeout=20)
-    except Exception as e:
-        print(f"Error al enviar datos a n8n: {e}")
+    # NOTA: el bot de WhatsApp SOLO se activa desde /crm/test-form (test form del CRM).
+    # El form web solo envía el email de notificación.
 
 @router.post("/wizardForm")
 async def send_email(form_data: FormData):
