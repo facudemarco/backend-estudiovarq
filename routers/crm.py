@@ -117,6 +117,8 @@ def crm_leads():
             "updated_at": row.get("ultimo_msg_ts", "") or row.get("created_at", "") or row.get("prox_seg_ts", ""),
             "unread": row.get("unread", 0),
             "paused": row["phone"] in paused,
+            "cualificado": row.get("cualificado", ""),
+            "razon_no_cual": row.get("razon_no_cual", ""),
         })
     result.sort(key=lambda r: r["updated_at"], reverse=True)
     return result
@@ -212,7 +214,21 @@ def crm_upsert_lead(body: dict, x_secret: Optional[str] = Header(default=None)):
     phone = normalize_phone(body.get("phone"))
     if not phone:
         raise HTTPException(status_code=400, detail="phone requerido")
+    existing = db.get_lead(phone)
     db.upsert_lead({k: v for k, v in body.items() if k != "phone"} | {"phone": phone})
+    if not existing:
+        name_str = body.get("name", "") or phone
+        try:
+            conn = db.get_conn()
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO crm_notifications (phone, tipo, titulo, detalle) VALUES (%s,'lead_nuevo','Nuevo lead','%s te escribió por primera vez')",
+                (phone, name_str),
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
     return {"ok": True, "phone": phone}
 
 
@@ -421,6 +437,15 @@ def crm_test_form(data: TestFormData):
         db.upsert_lead(lead)
         db.insert_message(phone_n, "in", data.comments, source="test-form")
         db.insert_event(phone_n, "bienvenida", detail="lead creado por form de prueba", actor="system")
+        conn = db.get_conn()
+        cur = conn.cursor()
+        name_str = f"{data.name} {data.lastName}" if data.lastName else data.name
+        cur.execute(
+            "INSERT INTO crm_notifications (phone, tipo, titulo, detalle) VALUES (%s,'lead_nuevo','Nuevo lead','%s completó el formulario de prueba')",
+            (phone_n, name_str),
+        )
+        conn.commit()
+        conn.close()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"no se pudo insertar el lead: {e}")
 
@@ -457,3 +482,66 @@ def crm_test_form(data: TestFormData):
     except Exception as e:
         print(f"test-form→n8n: {e}")
     return {"status": "ok", "phone": phone_n, "lead": db.get_lead(phone_n)}
+
+
+# === Notifications ===
+
+@router.get("/crm/notifications")
+def crm_notifications(limit: int = 50):
+    conn = db.get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM crm_notifications ORDER BY created_at DESC LIMIT %s",
+        (limit,),
+    )
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.execute("SELECT COUNT(*) as cnt FROM crm_notifications WHERE read_at IS NULL")
+    unread = cur.fetchone()[0] if cur.rowcount else 0
+    conn.close()
+    return {"notifications": rows, "unread": unread}
+
+
+class NotificationRead(BaseModel):
+    id: int
+
+@router.post("/crm/notifications/read")
+def mark_notification_read(data: NotificationRead):
+    conn = db.get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE crm_notifications SET read_at=NOW() WHERE id=%s AND read_at IS NULL",
+        (data.id,),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.post("/crm/notifications/read-all")
+def mark_all_read():
+    conn = db.get_conn()
+    cur = conn.cursor()
+    cur.execute("UPDATE crm_notifications SET read_at=NOW() WHERE read_at IS NULL")
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+class NotificationCreate(BaseModel):
+    phone: str
+    tipo: str
+    titulo: str
+    detalle: str = ""
+
+@router.post("/crm/notifications")
+def create_notification(data: NotificationCreate):
+    conn = db.get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO crm_notifications (phone, tipo, titulo, detalle) VALUES (%s,%s,%s,%s)",
+        (data.phone, data.tipo, data.titulo, data.detalle),
+    )
+    conn.commit()
+    nid = cur.lastrowid
+    conn.close()
+    return {"ok": True, "id": nid}

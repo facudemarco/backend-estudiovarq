@@ -14,10 +14,14 @@ type Lead = {
   prox_seg_ts: string;
   last_message: string;
   paused: boolean;
+  status: string;
+  cualificado: string;
+  razon_no_cual: string;
 };
 
 type Msg = { id: string; direction: string; text: string; ts: string; actor?: string };
 type Event = { id: string; step: string; ts: string; actor?: string };
+type Notification = { id: number; phone: string; tipo: string; titulo: string; detalle: string; read_at: string | null; created_at: string };
 
 const STEP_LABELS: Record<string, string> = {
   bienvenida: "Bienvenida m1/m2",
@@ -56,6 +60,9 @@ export default function CrmPage() {
   const [agentConnected, setAgentConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifs, setShowNotifs] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastMsgIdRef = useRef<string | null>(null);
 
@@ -85,8 +92,22 @@ export default function CrmPage() {
     }
   }, []);
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/crm/notifications`, { credentials: "include" });
+      if (res.ok) {
+        const d = await res.json();
+        setNotifications(d.notifications || []);
+        setUnreadCount(d.unread || 0);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     loadLeads();
+    loadNotifications();
     const checkAgent = () => {
       fetch(`${API_URL}/agent/state`)
         .then((r) => r.json())
@@ -100,11 +121,12 @@ export default function CrmPage() {
       .catch(() => {});
     const t = setInterval(() => {
       loadLeads();
+      loadNotifications();
       checkAgent();
       if (selected) loadDetail(selected);
     }, 15000);
     return () => clearInterval(t);
-  }, [loadLeads, loadDetail, selected]);
+  }, [loadLeads, loadDetail, loadNotifications, selected]);
 
   useEffect(() => {
     const last = messages[messages.length - 1]?.id;
@@ -192,6 +214,65 @@ export default function CrmPage() {
               WhatsApp conectado
             </span>
           )}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifs(!showNotifs)}
+              className="relative rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-all hover:bg-gray-100"
+            >
+              🔔
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            {showNotifs && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-80 max-h-96 overflow-y-auto rounded-lg border bg-white shadow-lg">
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <span className="text-sm font-semibold">Notificaciones</span>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={async () => {
+                        await fetch(`${API_URL}/crm/notifications/read-all`, { method: "POST", credentials: "include" });
+                        loadNotifications();
+                      }}
+                      className="text-xs text-tertiary hover:underline"
+                    >
+                      Marcar todo leído
+                    </button>
+                  )}
+                </div>
+                {notifications.length === 0 && (
+                  <p className="px-3 py-4 text-center text-sm text-gray-400">Sin notificaciones</p>
+                )}
+                {notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    onClick={async () => {
+                      if (!n.read_at) {
+                        await fetch(`${API_URL}/crm/notifications/read`, {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id: n.id }),
+                        });
+                        loadNotifications();
+                      }
+                      setSelected(n.phone);
+                      setShowNotifs(false);
+                    }}
+                    className={`cursor-pointer border-b px-3 py-2 text-sm hover:bg-gray-50 ${!n.read_at ? "bg-blue-50 font-medium" : ""}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{n.titulo}</span>
+                      <span className="text-[10px] text-gray-400">{fmtTs(n.created_at)}</span>
+                    </div>
+                    <p className="text-xs text-gray-600">{n.detalle}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={async () => {
               await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
@@ -241,6 +322,16 @@ export default function CrmPage() {
                 <span className={`rounded px-1.5 text-[10px] font-semibold uppercase ${selected === l.phone ? "bg-white/20 text-white" : "bg-secondary text-tertiary"}`}>
                   {l.stage}
                 </span>
+                {l.cualificado === "si" && (
+                  <span className="rounded bg-green-100 px-1.5 text-[10px] font-bold text-green-700">
+                    ✓ Cualificado
+                  </span>
+                )}
+                {l.cualificado === "no" && l.razon_no_cual && (
+                  <span className="rounded bg-red-50 px-1.5 text-[10px] text-red-600">
+                    ✗ {l.razon_no_cual}
+                  </span>
+                )}
                 {l.prox_seg_ts && (
                   <span className={`text-[10px] ${selected === l.phone ? "text-blue-100" : "text-gray-400"}`}>
                     seg: {fmtTs(l.prox_seg_ts)}
