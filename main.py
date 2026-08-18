@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import os
 import uvicorn
 from models.houses import Houses
 # from routers.login import router as routerLogin
@@ -30,12 +31,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BOT_PATHS = {"/crm/inbox", "/crm/events", "/crm/upsert-lead", "/crm/update-lead",
-             "/crm/lead", "/crm/lead-wizard-latest", "/crm/leads", "/crm/leads-pending",
-             "/crm/status", "/crm/messages", "/crm/parse-agendar", "/crm/test-form",
-             "/crm/notifications", "/crm/notifications/read", "/crm/notifications/read-all",
-             "/agent/state", "/agent/qr"}
+BOT_PATHS = {"/agent/state", "/agent/qr"}
 
+
+CRM_X_SECRET = os.environ.get("CRM_SECRET", "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq")
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -43,7 +42,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         path = request.url.path
         if path.startswith("/crm/"):
-            if path in BOT_PATHS:
+            x_secret = request.headers.get("X-Secret")
+            if x_secret == CRM_X_SECRET:
                 return await call_next(request)
             session = request.cookies.get("session")
             if not get_current_user(session):
