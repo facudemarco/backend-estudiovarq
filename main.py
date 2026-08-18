@@ -1,6 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from starlette.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
+from collections import defaultdict
 import os
-import uvicorn
 from models.houses import Houses
 # from routers.login import router as routerLogin
 from routers.house import router as routerHouses
@@ -36,6 +39,29 @@ BOT_PATHS = {"/agent/state", "/agent/qr"}
 
 CRM_X_SECRET = os.environ.get("CRM_SECRET", "MdpuF8KsXiRArNlHtl6pXO2XyLSJMTQ8_EstudioVARq")
 
+# Rate limiting middleware
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, limit: int = 100, window: int = 60):
+        super().__init__(app)
+        self.limit = limit
+        self.window = window
+        self.requests = defaultdict(list)
+
+    async def dispatch(self, request: Request, call_next):
+        client_ip = request.client.host if request.client else "unknown"
+        path = request.url.path
+
+        if path.startswith("/crm/") or path.startswith("/agent/"):
+            now = time.time()
+            self.requests[client_ip] = [t for t in self.requests[client_ip] if now - t < self.window]
+            if len(self.requests[client_ip]) >= self.limit:
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
+            self.requests[client_ip].append(now)
+
+        return await call_next(request)
+
+CRM_RATE_LIMIT = int(os.environ.get("CRM_RATE_LIMIT", "100"))
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         if request.method == "OPTIONS":
@@ -55,6 +81,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+app.add_middleware(RateLimitMiddleware, limit=CRM_RATE_LIMIT)
 app.add_middleware(AuthMiddleware)
 
 
